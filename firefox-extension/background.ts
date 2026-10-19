@@ -1,6 +1,6 @@
 import { WebsocketClient } from "./client";
 import { MessageHandler } from "./message-handler";
-import { getConfig, generateSecret } from "./extension-config";
+import { getConfig, generateSecret, setPausado } from "./extension-config";
 import { acompanharFechamento } from "./abas-claude";
 import { acompanharRede } from "./rede";
 
@@ -36,6 +36,12 @@ async function initExtension() {
 
 acompanharFechamento();
 acompanharRede();
+
+/* o botao "Pausar o Claude" que aparece na propria pagina */
+browser.runtime.onMessage.addListener(async (mensagem: { tipo?: string }, remetente) => {
+  if (mensagem?.tipo !== "pausar" || remetente.id !== browser.runtime.id) return;
+  await setPausado(true);
+});
 
 initExtension()
   .then((config) => {

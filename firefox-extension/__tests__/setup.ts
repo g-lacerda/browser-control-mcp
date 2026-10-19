@@ -54,6 +54,9 @@ const mockBrowser = {
   },
   runtime: {
     getURL: jest.fn(),
+    sendMessage: jest.fn(),
+    onMessage: { addListener: jest.fn() },
+    id: "claude-no-firefox@g-lacerda",
   },
 };
 

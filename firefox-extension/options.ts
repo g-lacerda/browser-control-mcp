@@ -55,16 +55,20 @@ async function loadSecret() {
     // Check if secret exists
     if (secret) {
       secretDisplay.textContent = secret;
+      const comando = document.getElementById("comando-mcp");
+      if (comando) {
+        comando.textContent = `claude mcp add --scope user navegador -e EXTENSION_SECRET='${secret}' -- node /caminho/do/browser-control-mcp/mcp-server/dist/server.js`;
+      }
     } else {
       secretDisplay.textContent =
-        "No secret found. Please reinstall the extension.";
+        "Chave não encontrada. Reinstale a extensão.";
       secretDisplay.style.color = "red";
       copyButton.disabled = true;
     }
   } catch (error) {
     console.error("Error loading secret:", error);
     secretDisplay.textContent =
-      "Error loading secret. Please check console for details.";
+      "Não deu pra ler a chave. Veja o console da extensão.";
     secretDisplay.style.color = "red";
     copyButton.disabled = true;
   }
@@ -78,26 +82,24 @@ async function copyToClipboard(event: MouseEvent) {
     return;
   }
   try {
-    const secret = secretDisplay.textContent;
-    if (
-      !secret ||
-      secret === "Loading..." ||
-      secret.includes("No secret found") ||
-      secret.includes("Error loading")
-    ) {
+    const botao = event.currentTarget as HTMLElement | null;
+    // o botao diz o que copia: o comando inteiro (passo 2) ou so a chave
+    const alvo = document.getElementById(botao?.dataset.copiar ?? "secret-display");
+    const texto = alvo?.textContent ?? "";
+    if (!texto || texto.startsWith("Carregando") || texto.startsWith("Chave não") || texto.startsWith("Não deu")) {
       return;
     }
 
-    await navigator.clipboard.writeText(secret);
+    await navigator.clipboard.writeText(texto);
 
     // Show success message
-    statusElement.textContent = "Secret copied to clipboard!";
+    statusElement.textContent = "Copiado.";
     setTimeout(() => {
       statusElement.textContent = "";
     }, 3000);
   } catch (error) {
     console.error("Error copying to clipboard:", error);
-    statusElement.textContent = "Failed to copy to clipboard";
+    statusElement.textContent = "Não deu pra copiar. Selecione e copie à mão.";
     statusElement.style.color = "red";
     setTimeout(() => {
       statusElement.textContent = "";
@@ -224,7 +226,7 @@ async function saveDomainLists(event: MouseEvent) {
     await setDomainDenyList(denyList);
 
     // Show success message
-    domainStatusElement.textContent = "Domain deny list saved successfully!";
+    domainStatusElement.textContent = "Lista de bloqueio salva.";
     domainStatusElement.style.color = "#4caf50";
     setTimeout(() => {
       domainStatusElement.textContent = "";
@@ -232,7 +234,7 @@ async function saveDomainLists(event: MouseEvent) {
     }, 3000);
   } catch (error) {
     console.error("Error saving domain lists:", error);
-    domainStatusElement.textContent = "Failed to save domain lists";
+    domainStatusElement.textContent = "Não deu pra salvar a lista.";
     domainStatusElement.style.color = "red";
     setTimeout(() => {
       domainStatusElement.textContent = "";
@@ -283,14 +285,14 @@ async function savePorts(event: MouseEvent) {
     for (const portStr of portStrings) {
       const port = parseInt(portStr, 10);
       if (isNaN(port) || port < 1 || port > 65535) {
-        throw new Error(`Invalid port number: ${portStr}. Ports must be between 1 and 65535.`);
+        throw new Error(`Porta inválida: ${portStr}. Use um número entre 1 e 65535.`);
       }
       ports.push(port);
     }
 
     // Ensure at least one port is provided
     if (ports.length === 0) {
-      throw new Error("At least one port must be specified.");
+      throw new Error("Informe pelo menos uma porta.");
     }
 
     // Save to storage
@@ -300,7 +302,7 @@ async function savePorts(event: MouseEvent) {
     browser.runtime.reload();
   } catch (error) {
     console.error("Error saving ports:", error);
-    portsStatusElement.textContent = error instanceof Error ? error.message : "Failed to save ports";
+    portsStatusElement.textContent = error instanceof Error ? error.message : "Não deu pra salvar as portas.";
     portsStatusElement.style.color = "red";
     setTimeout(() => {
       portsStatusElement.textContent = "";
@@ -323,7 +325,7 @@ async function loadAuditLog() {
       // Show empty state
       const emptyDiv = document.createElement("div");
       emptyDiv.className = "audit-log-empty";
-      emptyDiv.textContent = "No tool usage recorded yet.";
+      emptyDiv.textContent = "Nenhuma ação registrada ainda.";
       auditLogContainer.appendChild(emptyDiv);
       return;
     }
@@ -336,7 +338,7 @@ async function loadAuditLog() {
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
     
-    const headers = ["Tool", "Timestamp", "Domain"];
+    const headers = ["Ação", "Quando", "Site"];
     headers.forEach(headerText => {
       const th = document.createElement("th");
       th.textContent = headerText;
@@ -361,7 +363,7 @@ async function loadAuditLog() {
       const timestampCell = document.createElement("td");
       timestampCell.className = "audit-log-timestamp";
       const date = new Date(entry.timestamp);
-      timestampCell.textContent = date.toLocaleString();
+      timestampCell.textContent = date.toLocaleString("pt-BR");
       row.appendChild(timestampCell);
       
       // URL Domain
@@ -374,7 +376,7 @@ async function loadAuditLog() {
           urlCell.textContent = urlObj.hostname;
         } catch (e) {
           console.error("Invalid URL in audit log entry:", e);
-          urlCell.textContent = "Invalid URL";
+          urlCell.textContent = "endereço inválido";
         }
       } else {
         urlCell.textContent = "-";
@@ -389,7 +391,7 @@ async function loadAuditLog() {
     
   } catch (error) {
     console.error("Error loading audit log:", error);
-    auditLogContainer.innerHTML = '<div class="audit-log-empty">Error loading audit log. Please check console for details.</div>';
+    auditLogContainer.innerHTML = '<div class="audit-log-empty">Não deu pra carregar o registro.</div>';
   }
 }
 
@@ -408,7 +410,7 @@ async function handleClearAuditLog(event: MouseEvent) {
     await loadAuditLog();
     
     // Show success message
-    auditLogStatusElement.textContent = "Audit log cleared successfully!";
+    auditLogStatusElement.textContent = "Registro limpo.";
     auditLogStatusElement.style.color = "#4caf50";
     setTimeout(() => {
       auditLogStatusElement.textContent = "";
@@ -416,7 +418,7 @@ async function handleClearAuditLog(event: MouseEvent) {
     }, 3000);
   } catch (error) {
     console.error("Error clearing audit log:", error);
-    auditLogStatusElement.textContent = "Failed to clear audit log";
+    auditLogStatusElement.textContent = "Não deu pra limpar o registro.";
     auditLogStatusElement.style.color = "red";
     setTimeout(() => {
       auditLogStatusElement.textContent = "";
@@ -432,12 +434,21 @@ function initializeCollapsibleSections() {
   const sectionHeaders = document.querySelectorAll(".section-container > h2");
 
   sectionHeaders.forEach((header) => {
+    // teclado: Enter e espaco abrem e fecham como o clique
+    header.addEventListener("keydown", (event) => {
+      const tecla = (event as KeyboardEvent).key;
+      if (tecla === "Enter" || tecla === " ") {
+        event.preventDefault();
+        (header as HTMLElement).click();
+      }
+    });
     // Add click event listener to toggle section visibility
     header.addEventListener("click", (event) => {
       event.preventDefault();
 
       // Toggle the collapsed class on the header
-      header.classList.toggle("collapsed");
+      const recolhido = header.classList.toggle("collapsed");
+      header.setAttribute("aria-expanded", String(!recolhido));
 
       // Toggle the collapsed class on the section content
       const sectionContent = header.nextElementSibling as HTMLElement;
@@ -635,7 +646,7 @@ function pedirAprovacaoDeDominio(dominio: string) {
 }
 
 // Initialize the page
-copyButton.addEventListener("click", copyToClipboard);
+document.querySelectorAll<HTMLButtonElement>("[data-copiar]").forEach((b) => b.addEventListener("click", copyToClipboard));
 saveDomainListsButton.addEventListener("click", saveDomainLists);
 savePortsButton.addEventListener("click", savePorts);
 clearAuditLogButton.addEventListener("click", handleClearAuditLog);

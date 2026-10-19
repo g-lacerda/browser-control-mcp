@@ -1,457 +1,335 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 
 <head>
   <meta charset="utf-8">
-  <title>Browser Control MCP Options</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude no Navegador</title>
   <style>
+    :root {
+      --fundo: #f7f3ec;
+      --superficie: #fffdf9;
+      --texto: #221d17;
+      --suave: #6f6558;
+      --linha: #e6ddcf;
+      --laranja: #e07b16;
+      --laranja-texto: #a9530a;
+      --laranja-fundo: #fdf0e1;
+      --perigo: #c62828;
+      --ok: #1a7f4b;
+      --codigo: #f1ebe1;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --fundo: #161411;
+        --superficie: #201d19;
+        --texto: #f2ede5;
+        --suave: #a69c8f;
+        --linha: #36312a;
+        --laranja: #f28c28;
+        --laranja-texto: #f6a456;
+        --laranja-fundo: #2c2116;
+        --perigo: #ef6b6b;
+        --ok: #4cc38a;
+        --codigo: #2a2621;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-      padding: 20px;
-      max-width: 800px;
+      margin: 0;
+      background: var(--fundo);
+      color: var(--texto);
+      font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+    }
+
+    .main-content {
+      max-width: 760px;
       margin: 0 auto;
+      padding: 40px 20px 64px;
+      display: grid;
+      gap: 18px;
     }
 
-    .container {
-      background-color: #f9f9f9;
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    .main-content.modal-open { filter: blur(2px); pointer-events: none; }
+
+    header { display: flex; gap: 16px; align-items: center; margin-bottom: 6px; }
+    header svg { flex: none; }
+    h1 { font-size: 26px; line-height: 1.2; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+    .lead { margin: 4px 0 0; color: var(--suave); max-width: 60ch; }
+
+    .card {
+      background: var(--superficie);
+      border: 1px solid var(--linha);
+      border-radius: 14px;
+      padding: 20px 22px;
     }
 
-    h1 {
-      color: #333;
-      margin-top: 0;
+    .rotulo {
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--laranja-texto);
+      margin: 0 0 6px;
     }
 
-    h2 {
-      margin-top: 12px;
-      margin-bottom: 8px;
-      color: #333;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+    h2 { font-size: 17px; margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    h3 { font-size: 14px; margin: 18px 0 8px; }
+    p { margin: 8px 0; }
+    .suave { color: var(--suave); }
 
-    h2::after {
-      content: "";
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      background-image: url("assets/caret.svg");
-      background-size: contain;
-      background-repeat: no-repeat;
+    /* passo a passo da configuracao: a ordem importa */
+    .passos { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 16px; counter-reset: passo; }
+    .passos li { display: grid; grid-template-columns: 30px 1fr; gap: 12px; counter-increment: passo; }
+    .passos li::before {
+      content: counter(passo);
+      width: 30px; height: 30px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: var(--laranja-fundo); color: var(--laranja-texto);
+      font-weight: 700; font-size: 14px;
     }
+    .passos strong { display: block; }
 
-    h2.collapsed::after {
-      transform: rotate(180deg);
+    code, pre, .chave {
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 12.5px;
     }
-
-    .section-container {
-      margin-top: 20px;
-      background-color: #fff;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 15px;
-    }
-
-    .section-content {
-      transition: max-height 0.3s ease, opacity 0.3s ease;
-      max-height: 2000px;
-      opacity: 1;
-      overflow: hidden;
-    }
-
-    .section-content.collapsed {
-      max-height: 0;
-      opacity: 0;
-      padding-top: 0;
-      padding-bottom: 0;
-    }
-
-    .secret-value {
-      font-family: monospace;
-      word-break: break-all;
-      background-color: #f5f5f5;
-      padding: 10px;
-      border-radius: 4px;
-      border: 1px solid #e0e0e0;
-    }
-
-    .copy-button {
-      margin-top: 10px;
-      background-color: #4285f4;
-      color: white;
-      border: none;
-      padding: 8px 16px;  
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .copy-button:hover {
-      background-color: #3367d6;
-    }
-
-    .status {
-      margin-top: 10px;
-      color: #4caf50;
-      font-size: 14px;
-      height: 20px;
-    }
-
-    .tool-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid #eee;
-    }
-
-    .tool-row:last-child {
-      border-bottom: none;
-    }
-
-    .tool-label-container {
-      flex: 1;
-      padding-right: 20px;
-    }
-
-    .tool-name {
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-
-    .tool-description {
-      font-size: 14px;
-      color: #666;
-    }
-
-    /* Toggle switch styles */
-    .toggle-switch {
+    code { background: var(--codigo); padding: 1px 5px; border-radius: 5px; }
+    .bloco {
       position: relative;
-      display: inline-block;
-      width: 50px;
-      height: 24px;
+      margin-top: 8px;
+      background: var(--codigo);
+      border-radius: 10px;
+      padding: 12px 92px 12px 12px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
     }
+    .bloco button { position: absolute; top: 8px; right: 8px; }
 
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .slider {
-      position: absolute;
+    button {
+      font: inherit;
+      font-size: 13.5px;
+      font-weight: 600;
+      padding: 7px 13px;
+      border-radius: 9px;
+      border: 1px solid var(--linha);
+      background: var(--superficie);
+      color: var(--texto);
       cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #ccc;
-      transition: .4s;
-      border-radius: 24px;
     }
+    button:hover { border-color: var(--laranja); }
+    button.primario { background: var(--laranja); border-color: var(--laranja); color: #1a1007; }
+    button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, h2[role=button]:focus-visible {
+      outline: 2px solid var(--laranja);
+      outline-offset: 2px;
+    }
+    button:disabled { opacity: 0.5; cursor: default; }
 
-    .slider:before {
-      position: absolute;
+    select, input[type=text], textarea {
+      font: inherit;
+      color: var(--texto);
+      background: var(--fundo);
+      border: 1px solid var(--linha);
+      border-radius: 9px;
+      padding: 8px 10px;
+      width: 100%;
+    }
+    textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+
+    .linha-acoes { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+    .status { font-size: 13px; color: var(--ok); min-height: 1em; }
+
+    .garantias { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .garantias li { padding-left: 22px; position: relative; }
+    .garantias li::before { content: ""; position: absolute; left: 4px; top: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--laranja); }
+
+    #dominios-aprovados { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+    #dominios-aprovados li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--linha); }
+    #dominios-aprovados li:last-child { border-bottom: 0; }
+
+    /* secoes que recolhem (o script alterna .collapsed) */
+    .section-container > h2[role=button] { cursor: pointer; }
+    .section-container > h2[role=button]::after {
       content: "";
-      height: 16px;
-      width: 16px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      transition: .4s;
-      border-radius: 50%;
+      width: 9px; height: 9px;
+      border-right: 2px solid var(--suave);
+      border-bottom: 2px solid var(--suave);
+      transform: rotate(45deg);
+      transition: transform 200ms ease;
+      flex: none;
+    }
+    .section-container > h2.collapsed::after { transform: rotate(-45deg); }
+    .section-content { margin-top: 12px; }
+    .section-content.collapsed { display: none; }
+
+    /* ferramentas (linhas geradas pelo script) */
+    .tool-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--linha); }
+    .tool-row:last-child { border-bottom: 0; }
+    .tool-name { font-weight: 600; }
+    .tool-description { color: var(--suave); font-size: 13px; }
+    .toggle-switch { position: relative; display: inline-block; width: 40px; height: 23px; flex: none; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; cursor: pointer; background: var(--linha); border-radius: 23px; transition: background 150ms ease; }
+    .slider::before { content: ""; position: absolute; width: 17px; height: 17px; left: 3px; top: 3px; border-radius: 50%; background: #fff; transition: transform 150ms ease; }
+    .toggle-switch input:checked + .slider { background: var(--laranja); }
+    .toggle-switch input:checked + .slider::before { transform: translateX(17px); }
+    .toggle-switch input:focus-visible + .slider { outline: 2px solid var(--laranja); outline-offset: 2px; }
+
+    /* registro de acoes */
+    #audit-log-container { overflow-x: auto; }
+    .audit-log-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+    .audit-log-table th { text-align: left; color: var(--suave); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--linha); }
+    .audit-log-table td { padding: 6px 8px; border-bottom: 1px solid var(--linha); }
+    .audit-log-empty { color: var(--suave); padding: 8px 0; }
+
+    /* pedido de liberacao de site (modo perguntar) */
+    .permission-modal { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(10, 8, 6, 0.55); z-index: 10; padding: 20px; }
+    .permission-modal.hidden { display: none; }
+    .permission-modal-content { background: var(--superficie); border: 1px solid var(--linha); border-radius: 16px; padding: 24px; max-width: 440px; width: 100%; }
+    .permission-modal h2 { font-size: 19px; }
+    .permission-domain { margin: 12px 0; padding: 10px 12px; border-radius: 10px; background: var(--laranja-fundo); color: var(--laranja-texto); font-weight: 700; word-break: break-all; }
+    .permission-buttons { display: flex; gap: 10px; margin-top: 16px; }
+    .grant-button { background: var(--laranja); border-color: var(--laranja); color: #1a1007; }
+
+    @media (max-width: 520px) {
+      .main-content { padding: 24px 16px 48px; }
+      .bloco { padding-right: 12px; padding-bottom: 50px; }
+      .bloco button { top: auto; bottom: 8px; }
     }
 
-    input:checked+.slider {
-      background-color: #4285f4;
-    }
-
-    input:focus+.slider {
-      box-shadow: 0 0 1px #4285f4;
-    }
-
-    input:checked+.slider:before {
-      transform: translateX(26px);
-    }
-
-    /* Permission modal styles */
-    .permission-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-
-    .permission-modal.hidden {
-      display: none;
-    }
-
-    .permission-modal-content {
-      background-color: white;
-      padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      max-width: 500px;
-      width: 90%;
-      text-align: center;
-    }
-
-    .permission-modal h2 {
-      margin-top: 0;
-      margin-bottom: 20px;
-      color: #333;
-      cursor: default;
-    }
-
-    .permission-modal h2::after {
-      display: none;
-    }
-
-    .permission-modal p {
-      margin-bottom: 20px;
-      color: #666;
-      line-height: 1.5;
-    }
-
-    .permission-domain {
-      font-family: monospace;
-      background-color: #f5f5f5;
-      padding: 8px 12px;
-      border-radius: 4px;
-      border: 1px solid #e0e0e0;
-      display: inline-block;
-      margin: 0 4px;
-      font-weight: bold;
-    }
-
-    .permission-buttons {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      margin-top: 25px;
-    }
-
-    .grant-button {
-      background-color: #4285f4;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: bold;
-    }
-
-    .grant-button:hover {
-      background-color: #3367d6;
-    }
-
-    .cancel-button {
-      background-color: #f1f3f4;
-      color: #333;
-      border: 1px solid #dadce0;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .cancel-button:hover {
-      background-color: #e8eaed;
-    }
-
-    .main-content.modal-open {
-      filter: blur(2px);
-      pointer-events: none;
-    }
-
-    /* Audit log styles */
-    .audit-log-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-      font-size: 14px;
-    }
-
-    .audit-log-table th,
-    .audit-log-table td {
-      padding: 8px 12px;
-      text-align: left;
-      border-bottom: 1px solid #eee;
-    }
-
-    .audit-log-table th {
-      background-color: #f5f5f5;
-      font-weight: bold;
-      color: #333;
-    }
-
-    .audit-log-table td {
-      color: #666;
-    }
-
-    .audit-log-url {
-      font-family: monospace;
-      font-size: 12px;
-      max-width: 200px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .audit-log-timestamp {
-      white-space: nowrap;
-      font-size: 12px;
-    }
-
-    .audit-log-empty {
-      text-align: center;
-      color: #999;
-      font-style: italic;
-      padding: 20px;
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
     }
   </style>
 </head>
 
 <body>
-  <!-- Permission Request Modal -->
   <div id="permission-modal" class="permission-modal hidden">
-    <div class="permission-modal-content">
-      <h2>Permission Required</h2>
-      <p>The Browser Control MCP extension needs permission to access:</p>
+    <div class="permission-modal-content" role="dialog" aria-modal="true" aria-labelledby="titulo-permissao">
+      <h2 id="titulo-permissao">Liberar o Claude neste site?</h2>
+      <p class="suave">O Claude quer navegar, ler, clicar e digitar nas abas dele neste site:</p>
       <div class="permission-domain" id="permission-domain"></div>
-      <p id="permission-text">This will allow the extension to interact with pages on this domain as requested by the MCP server.</p>
+      <p id="permission-text" class="suave">Vale até você revogar aqui nas opções.</p>
       <div class="permission-buttons">
-        <button id="grant-btn" class="grant-button">Grant Permission</button>
-        <button id="cancel-btn" class="cancel-button">Cancel</button>
+        <button id="grant-btn" class="grant-button" type="button">Liberar</button>
+        <button id="cancel-btn" type="button">Agora não</button>
       </div>
     </div>
   </div>
 
-  <div class="container main-content" id="main-content">
-    <h1>Claude no Navegador</h1>
-    <p>O Claude só age nas abas que ele mesmo abre, no grupo "Claude". As suas abas, o histórico e o resto do navegador ficam de fora.</p>
+  <div class="main-content" id="main-content">
+    <header>
+      <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+        <rect width="52" height="52" rx="14" fill="var(--laranja-fundo)" />
+        <path d="M17 12 L17 37 L24 31 L28.6 41 L33.4 39 L28.9 29 L38 29 Z" fill="var(--laranja)" stroke="var(--superficie)" stroke-width="2.2" stroke-linejoin="round" />
+      </svg>
+      <div>
+        <h1>Claude no Navegador</h1>
+        <p class="lead">Deixa o Claude navegar, clicar e digitar por você, só nas abas que ele mesmo abre no grupo laranja "Claude".</p>
+      </div>
+    </header>
 
-    <div class="section-container">
-      <h2>Modo de autorização</h2>
+    <section class="card" aria-labelledby="titulo-configurar">
+      <p class="rotulo">Primeira vez</p>
+      <h2 id="titulo-configurar">Como ligar ao Claude Code</h2>
+      <ol class="passos">
+        <li>
+          <div>
+            <strong>Compile o servidor local</strong>
+            <span class="suave">Na pasta do projeto: <code>npm install &amp;&amp; npm run build</code>. Ele roda só no seu computador.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>Registre no Claude Code</strong>
+            <span class="suave">Troque o caminho pelo da pasta onde você clonou o projeto e rode no terminal:</span>
+            <div class="bloco"><span id="comando-mcp">Carregando…</span><button id="copy-button" type="button" data-copiar="comando-mcp">Copiar</button></div>
+            <div id="status" class="status" role="status"></div>
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>Reinicie o Claude Code</strong>
+            <span class="suave">Saia e rode <code>claude --continue</code>. Pronto: peça pra ele abrir um site.</span>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="card" aria-labelledby="titulo-modo">
+      <p class="rotulo">Autorização</p>
+      <h2 id="titulo-modo">Como o Claude pede licença</h2>
+      <p class="suave">No modo autônomo ele age em qualquer site sem perguntar. No outro, você libera cada site na primeira vez.</p>
+      <select id="modo-autorizacao" aria-label="Modo de autorização">
+        <option value="autonomo">Autônomo: age sem perguntar</option>
+        <option value="perguntar">Perguntar por site na primeira vez</option>
+      </select>
+      <h3>Sites liberados</h3>
+      <ul id="dominios-aprovados"></ul>
+    </section>
+
+    <section class="card" aria-labelledby="titulo-garantias">
+      <p class="rotulo">Sempre ligado</p>
+      <h2 id="titulo-garantias">O que vale em qualquer modo</h2>
+      <ul class="garantias">
+        <li>Só as abas do grupo "Claude". As suas não são lidas, listadas nem fotografadas.</li>
+        <li>Nada sai do seu computador pela extensão: o próprio Firefox só deixa ela falar com o servidor local.</li>
+        <li>Cartão só de teste (sandbox). Número de cartão de verdade é recusado.</li>
+        <li>O botão da extensão e o botão "Pausar o Claude" na página param tudo na hora.</li>
+        <li>Toda ação fica no registro aqui embaixo.</li>
+      </ul>
+    </section>
+
+    <section class="card section-container">
+      <h2 role="button" tabindex="0" aria-expanded="true">O que o Claude pode fazer</h2>
       <div class="section-content">
-        <select id="modo-autorizacao" style="padding: 6px;">
-          <option value="autonomo">Autônomo: age em qualquer site sem perguntar</option>
-          <option value="perguntar">Perguntar por site na primeira vez</option>
-        </select>
-        <p style="margin-top: 8px;">Em qualquer modo: cartão só de teste (sandbox), sites da lista de bloqueio ficam de fora, e o botão da extensão pausa o Claude na hora.</p>
-        <h3 style="margin-top: 16px;">Sites liberados</h3>
-        <ul id="dominios-aprovados" style="padding-left: 18px;"></ul>
+        <div id="tool-settings-container"></div>
       </div>
-    </div>
+    </section>
 
-    <div class="section-container">
-      <h2>MCP Server Installation</h2>
-      <div class="section-content">
-        <p>To use this extension, you need to install the local MCP server. Choose one of the following options:</p>
-        
-        <div style="margin: 15px 0;">
-          <h3 style="margin: 10px 0; font-size: 16px; color: #333;">Option 1: Download DXT Package (Claude Desktop only)</h3>
-          <p>Download and open the pre-built DXT package:</p>
-          <a href="https://github.com/eyalzh/browser-control-mcp/releases/download/v1.5.2/mcp-server-v1.5.2.dxt" 
-             style="display: inline-block; background-color: #4285f4; color: white; padding: 8px 16px; 
-                    text-decoration: none; border-radius: 4px; margin: 5px 0; font-size: 14px;">
-            Download DXT Package
-          </a>
-        </div>
-        
-        <div style="margin: 15px 0;">
-          <h3 style="margin: 10px 0; font-size: 16px; color: #333;">Option 2: Manual MCP Installation</h3>
-          <p>Follow the detailed setup instructions in the github repository:</p>
-          <a href="https://github.com/eyalzh/browser-control-mcp?tab=readme-ov-file#installation" 
-             target="_blank" rel="noopener noreferrer"
-             style="display: inline-block; background-color: #f1f3f4; color: #333; padding: 8px 16px; 
-                    text-decoration: none; border-radius: 4px; border: 1px solid #dadce0; margin: 5px 0; font-size: 14px;">
-            View Installation Guide
-          </a>
-        </div>
-        
-        <p style="margin-top: 15px; color: #666; font-size: 14px;">
-          After installing the MCP server, you'll need to configure it with the secret key shown below.
-        </p>
-      </div>
-    </div>
-
-    <div class="section-container">
-      <h2>Secret Key</h2>
-      <div class="section-content">
-        <p>This secret key is automatically generated when the extension is installed and is used to authenticate
-          connections to the MCP server:</p>
-        <div class="secret-value" id="secret-display">Loading...</div>
-        <button class="copy-button" id="copy-button">Copy to Clipboard</button>
-        <div class="status" id="status"></div>
-      </div>
-    </div>
-
-    <div class="section-container">
-      <h2>WebSocket Ports</h2>
-      <div class="section-content">
-        <p>Configure the WebSocket ports for MCP server connections (comma-separated list). Note: Changing this value will reload the extension.</p>
-        <input type="text" id="ports-input" placeholder="8089, 8090, 8091" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; margin-bottom: 10px;" />
-        <button class="copy-button" id="save-ports">Save Ports</button>
-        <div class="status" id="ports-status"></div>
-      </div>
-    </div>
-
-    <div class="section-container">
-      <h2>Tool Permissions</h2>
-      <div class="section-content">
-        <p>Enable or disable specific MCP tools that can interact with your browser:</p>
-        <div id="tool-settings-container">
-          <!-- Tool settings will be dynamically inserted here -->
-          <div class="loading">Loading tool settings...</div>
+    <section class="card section-container">
+      <h2 class="collapsed" role="button" tabindex="0" aria-expanded="false">Sites bloqueados</h2>
+      <div class="section-content collapsed">
+        <p class="suave">Um site por linha. O Claude nunca age neles, nem no modo autônomo. Subdomínios entram junto.</p>
+        <textarea id="domain-deny-list" rows="6" placeholder="itau.com.br&#10;nubank.com.br"></textarea>
+        <div class="linha-acoes">
+          <button id="save-domain-lists" type="button" class="primario">Salvar</button>
+          <div id="domain-status" class="status" role="status"></div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="section-container">
-      <h2 class="collapsed" role="button" aria-expanded="false" tabindex="0" id="domain-filtering-header">Domain Filtering</h2>
-      <div class="section-content collapsed" aria-labelledby="domain-filtering-header">
-        <p>Configure which domains the extension can interact with:</p>
-
-        <div class="domain-list-container" style="margin-top: 20px;">
-          <h3>Domain Deny List</h3>
-          <p>The extension will not open tabs or get content from tabs with these domains (one domain per line):</p>
-          <textarea id="domain-deny-list" rows="6" style="width: 100%; font-family: monospace;"></textarea>
-        </div>
-
-        <button id="save-domain-lists" class="copy-button" style="margin-top: 15px;">Save Domain Lists</button>
-        <div class="status" id="domain-status"></div>
-      </div>
-    </div>
-
-    <div class="section-container">
-      <h2 class="collapsed" role="button" aria-expanded="false" tabindex="0" id="audit-log-header">Audit Log</h2>
-      <div class="section-content collapsed" aria-labelledby="audit-log-header">
-        <p>View recent tool usage history:</p>
-        
-        <div id="audit-log-container" style="margin-top: 20px;">
-          <div class="loading">Loading audit log...</div>
-        </div>
-
-        <div style="margin-top: 15px;">
-          <button id="clear-audit-log" class="copy-button">Clear Log</button>
-          <div class="status" id="audit-log-status"></div>
+    <section class="card section-container">
+      <h2 class="collapsed" role="button" tabindex="0" aria-expanded="false">Registro de ações</h2>
+      <div class="section-content collapsed">
+        <div id="audit-log-container"></div>
+        <div class="linha-acoes">
+          <button id="clear-audit-log" type="button">Limpar registro</button>
+          <div id="audit-log-status" class="status" role="status"></div>
         </div>
       </div>
-    </div>
+    </section>
+
+    <section class="card section-container">
+      <h2 class="collapsed" role="button" tabindex="0" aria-expanded="false">Avançado</h2>
+      <div class="section-content collapsed">
+        <h3>Chave da conexão</h3>
+        <p class="suave">Combina a extensão com o servidor local. Já vai dentro do comando do passo 2.</p>
+        <div class="bloco"><span id="secret-display" class="chave">Carregando…</span><button type="button" data-copiar="secret-display">Copiar</button></div>
+        <h3>Portas</h3>
+        <p class="suave">Portas do servidor local, separadas por vírgula. O padrão é 8089.</p>
+        <input type="text" id="ports-input" aria-label="Portas">
+        <div class="linha-acoes">
+          <button id="save-ports" type="button" class="primario">Salvar portas</button>
+          <div id="ports-status" class="status" role="status"></div>
+        </div>
+      </div>
+    </section>
   </div>
-
   <script src="dist/options.js"></script>
 </body>
 

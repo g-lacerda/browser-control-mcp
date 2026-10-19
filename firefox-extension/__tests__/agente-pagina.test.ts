@@ -5,8 +5,8 @@ import "../agente-pagina";
 
 type Agente = {
   lerPagina: (so: boolean) => string;
-  digitar: (texto: string, ref?: string, seletor?: string, limpar?: boolean, enviar?: boolean) => string;
-  clicar: (ref?: string, seletor?: string) => string;
+  digitar: (texto: string, ref?: string, seletor?: string, limpar?: boolean, enviar?: boolean) => Promise<string>;
+  clicar: (ref?: string, seletor?: string) => Promise<string>;
 };
 const agente = () => (window as unknown as { __claudeAgente: Agente }).__claudeAgente;
 
@@ -35,25 +35,30 @@ it("le a pagina com referencias e nunca mostra o valor da senha", () => {
   expect(texto).not.toContain("segredo");
 });
 
-it("campo de cartao so aceita cartao de teste", () => {
-  expect(() => agente().digitar("4539 5787 6362 1486", undefined, "#cartao")).toThrow("cartao");
-  expect(() => agente().digitar("1234", undefined, "#cartao")).toThrow("cartao de teste");
-  agente().digitar("4242 4242 4242 4242", undefined, "#cartao");
+it("campo de cartao so aceita cartao de teste", async () => {
+  await expect(agente().digitar("4539 5787 6362 1486", undefined, "#cartao")).rejects.toThrow("cartao");
+  await expect(agente().digitar("1234", undefined, "#cartao")).rejects.toThrow("cartao de teste");
+  await agente().digitar("4242 4242 4242 4242", undefined, "#cartao");
   expect((document.getElementById("cartao") as HTMLInputElement).value).toBe("4242 4242 4242 4242");
 });
 
-it("cartao real e recusado ate em campo comum", () => {
-  expect(() => agente().digitar("4539578763621486", undefined, "#obs")).toThrow("cartao de verdade");
+it("cartao real e recusado ate em campo comum", async () => {
+  await expect(agente().digitar("4539578763621486", undefined, "#obs")).rejects.toThrow("cartao de verdade");
   expect((document.getElementById("obs") as HTMLInputElement).value).toBe("");
 });
 
-it("senha pode ser digitada e clicar acha o botao pela referencia", () => {
-  agente().digitar("nova-senha", undefined, "#senha");
+it("senha pode ser digitada e clicar acha o botao pela referencia", async () => {
+  await agente().digitar("nova-senha", undefined, "#senha");
   expect((document.getElementById("senha") as HTMLInputElement).value).toBe("nova-senha");
   const texto = agente().lerPagina(true);
   const ref = /\[(e\d+)\] button "Entrar"/.exec(texto)![1];
   let clicado = false;
   document.getElementById("entrar")!.addEventListener("click", () => (clicado = true));
-  agente().clicar(ref);
+  await agente().clicar(ref);
   expect(clicado).toBe(true);
+  // o cursor e o destaque sao desenhados por cima, sem pegar clique
+  const camada = document.querySelector("claude-no-navegador") as HTMLElement;
+  expect(camada.style.pointerEvents).toBe("none");
+  // shadow DOM fechado: a pagina nao alcanca o cursor nem o botao de pausar
+  expect(camada.shadowRoot).toBeNull();
 });

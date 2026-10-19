@@ -8,6 +8,7 @@ import {
   getModoAutorizacao,
   getDominiosAprovados,
   estaPausado,
+  digitacaoAnimada,
 } from "./extension-config";
 import { abrirAbaDoClaude, exigirAbaDoClaude, idsDasAbasDoClaude } from "./abas-claude";
 import { lerRede } from "./rede";
@@ -89,7 +90,14 @@ export class MessageHandler {
         await this.agir(req.correlationId, req.tabId, "clicar", [req.ref, req.selector, req.x, req.y, req.double ?? false]);
         break;
       case "type":
-        await this.agir(req.correlationId, req.tabId, "digitar", [req.text, req.ref, req.selector, req.clear ?? true, req.submit ?? false]);
+        await this.agir(req.correlationId, req.tabId, "digitar", [
+          req.text,
+          req.ref,
+          req.selector,
+          req.clear ?? true,
+          req.submit ?? false,
+          await digitacaoAnimada(),
+        ]);
         break;
       case "press-key":
         await this.agir(req.correlationId, req.tabId, "apertarTecla", [req.key]);
@@ -406,8 +414,9 @@ export class MessageHandler {
   private async chamarAgente<T>(tabId: number, metodo: string, args: unknown[]): Promise<T> {
     await this.garantirAgente(tabId);
     const [resposta] = await browser.tabs.executeScript(tabId, {
-      code: `(function () {
-        try { return { ok: true, valor: window.__claudeAgente[${JSON.stringify(metodo)}](...${JSON.stringify(args)}) } }
+      // async: as acoes esperam o cursor chegar; o Firefox resolve a Promise do executeScript
+      code: `(async function () {
+        try { return { ok: true, valor: await window.__claudeAgente[${JSON.stringify(metodo)}](...${JSON.stringify(args)}) } }
         catch (e) { return { ok: false, erro: String((e && e.message) || e) } }
       })()`,
     });

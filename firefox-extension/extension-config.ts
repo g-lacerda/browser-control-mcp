@@ -17,63 +17,63 @@ export interface ToolInfo {
 export const AVAILABLE_TOOLS: ToolInfo[] = [
   {
     id: "open-browser-tab",
-    name: "Open Browser Tab",
-    description: "Allows the MCP server to open new browser tabs"
+    name: "Abrir abas",
+    description: "Abrir abas novas no grupo Claude"
   },
   {
     id: "close-browser-tabs",
-    name: "Close Browser Tabs",
-    description: "Allows the MCP server to close browser tabs"
+    name: "Fechar abas",
+    description: "Fechar abas do grupo Claude"
   },
   {
     id: "get-list-of-open-tabs",
-    name: "Get List of Open Tabs",
-    description: "Allows the MCP server to get a list of all open tabs"
+    name: "Listar abas",
+    description: "Ver as abas do grupo Claude (as suas nunca aparecem)"
   },
   {
     id: "get-recent-browser-history",
-    name: "Get Recent Browser History",
-    description: "Allows the MCP server to access your recent browsing history"
+    name: "Histórico de navegação",
+    description: "Ler o seu histórico. Vem desligado: é seu, não do Claude"
   },
   {
     id: "get-tab-web-content",
-    name: "Get Tab Web Content",
-    description: "Allows the MCP server to read the content of web pages"
+    name: "Ler o texto da página",
+    description: "Ler o texto e os links das abas do grupo Claude"
   },
   {
     id: "reorder-browser-tabs",
-    name: "Reorder/Group Browser Tabs",
-    description: "Allows the MCP server to reorder/group your browser tabs"
+    name: "Organizar abas",
+    description: "Reordenar e agrupar as abas do grupo Claude"
   },
   {
     id: "find-highlight-in-browser-tab",
-    name: "Find and Highlight in Browser Tab",
-    description: "Allows the MCP server to search for and highlight text in web pages"
+    name: "Buscar na página",
+    description: "Procurar e destacar texto nas abas do grupo Claude"
   },
   {
     id: "agir-na-pagina",
-    name: "Agir na pagina",
-    description: "Navegar, clicar, digitar, rolar e escolher opcoes nas abas do grupo Claude"
+    name: "Agir na página",
+    description: "Navegar, clicar, digitar, rolar e escolher opções nas abas do grupo Claude"
   },
   {
     id: "ler-pagina",
-    name: "Ler a pagina",
-    description: "Ler os elementos da pagina com referencias, nas abas do grupo Claude"
+    name: "Ler os elementos",
+    description: "Ler botões, campos e links com referência, nas abas do grupo Claude"
   },
   {
     id: "rodar-javascript",
     name: "Rodar JavaScript",
-    description: "Executar JavaScript nas abas do grupo Claude"
+    description: "Rodar código nas abas do grupo Claude, pra testar e depurar"
   },
   {
     id: "console-e-rede",
     name: "Console e rede",
-    description: "Ler o console e as requisicoes de rede das abas do grupo Claude"
+    description: "Ler o console e as requisições de rede das abas do grupo Claude"
   },
   {
     id: "capture-tab-screenshot",
-    name: "Capture Tab Screenshot",
-    description: "Allows the MCP server to capture a screenshot of a tab, after you authorize that tab with the toolbar button"
+    name: "Print da aba",
+    description: "Fotografar a área visível de uma aba do grupo Claude. Nunca a tela do computador"
   }
 ];
 
@@ -126,6 +126,7 @@ export interface ExtensionConfig {
   modoAutorizacao?: ModoAutorizacao;
   dominiosAprovados?: string[];
   pausado?: boolean;
+  digitacaoAnimada?: boolean;
   toolSettings?: ToolSettings;
   domainDenyList?: string[];
   ports: number[];
@@ -399,6 +400,17 @@ export async function aprovarDominio(dominio: string): Promise<void> {
 export async function revogarDominio(dominio: string): Promise<void> {
   const config = await getConfig();
   config.dominiosAprovados = (config.dominiosAprovados ?? []).filter((d) => d !== dominio.toLowerCase());
+  await saveConfig(config);
+}
+
+/* digitacao letra por letra na tela (padrao: ligada) */
+export async function digitacaoAnimada(): Promise<boolean> {
+  return (await getConfig()).digitacaoAnimada !== false;
+}
+
+export async function setDigitacaoAnimada(ligada: boolean): Promise<void> {
+  const config = await getConfig();
+  config.digitacaoAnimada = ligada;
   await saveConfig(config);
 }
 
