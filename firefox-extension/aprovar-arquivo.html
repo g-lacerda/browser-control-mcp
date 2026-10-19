@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Enviar arquivo?</title>
+  <style>
+    :root { --fundo: #f7f3ec; --superficie: #fffdf9; --texto: #221d17; --suave: #6f6558; --linha: #e6ddcf; --laranja: #e07b16; --laranja-texto: #a9530a; --laranja-fundo: #fdf0e1; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fundo: #161411; --superficie: #201d19; --texto: #f2ede5; --suave: #a69c8f; --linha: #36312a; --laranja: #f28c28; --laranja-texto: #f6a456; --laranja-fundo: #2c2116; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 20px; background: var(--fundo); color: var(--texto); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif; }
+    main { width: 100%; max-width: 460px; background: var(--superficie); border: 1px solid var(--linha); border-radius: 16px; padding: 24px; display: grid; gap: 14px; }
+    header { display: flex; gap: 12px; align-items: center; }
+    h1 { font-size: 20px; margin: 0; text-wrap: balance; }
+    p { margin: 0; color: var(--suave); }
+    .site { font-weight: 700; color: var(--laranja-texto); word-break: break-all; }
+    ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+    li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 10px; background: var(--laranja-fundo); font-variant-numeric: tabular-nums; }
+    li span:first-child { font-weight: 600; word-break: break-all; }
+    li span:last-child { color: var(--suave); flex: none; }
+    .acoes { display: flex; gap: 10px; }
+    button { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--linha); background: var(--superficie); color: var(--texto); cursor: pointer; }
+    button.enviar { background: var(--laranja); border-color: var(--laranja); color: #1a1007; }
+    button:focus-visible { outline: 2px solid var(--laranja); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <img src="assets/icone.svg" width="40" height="40" alt="">
+      <h1>O Claude quer enviar arquivos seus</h1>
+    </header>
+    <p>Pra um campo de upload do site <span class="site" id="site">…</span></p>
+    <ul id="arquivos"></ul>
+    <p id="explica">O arquivo só sai do seu computador se você enviar. Você pode mudar isso nas opções da extensão.</p>
+    <div class="acoes">
+      <button id="enviar" class="enviar" type="button">Enviar</button>
+      <button id="negar" type="button">Não enviar</button>
+    </div>
+  </main>
+  <script src="dist/aprovar-arquivo.js"></script>
+</body>
+</html>

@@ -5,6 +5,8 @@
 import { ServerMessageRequest } from "@browser-control-mcp/common/server-messages";
 
 const DEFAULT_WS_PORT = 8089;
+/* uma porta por sessao do Claude Code: o servidor pega a primeira livre e a extensao conecta em todas */
+export const PORTAS_PADRAO = [DEFAULT_WS_PORT, 8090, 8091, 8092, 8093];
 const AUDIT_LOG_SIZE_LIMIT = 100; // Maximum number of audit log entries to keep
 
 // Define all available tools with their IDs and descriptions
@@ -71,6 +73,11 @@ export const AVAILABLE_TOOLS: ToolInfo[] = [
     description: "Ler o console e as requisições de rede das abas do grupo Claude"
   },
   {
+    id: "enviar-arquivos",
+    name: "Enviar arquivos do computador",
+    description: "Colocar arquivos seus num campo de upload das abas do grupo Claude, conforme a autorização de envio"
+  },
+  {
     id: "capture-tab-screenshot",
     name: "Print da aba",
     description: "Fotografar a área visível de uma aba do grupo Claude. Nunca a tela do computador"
@@ -98,6 +105,7 @@ export const COMMAND_TO_TOOL_ID: Record<ServerMessageRequest["cmd"], string> = {
   "run-js": "rodar-javascript",
   "read-console": "console-e-rede",
   "read-network": "console-e-rede",
+  "upload-file": "enviar-arquivos",
 };
 
 // Storage schema for tool settings
@@ -115,6 +123,8 @@ export interface AuditLogEntry {
 
 // Extended config interface
 export type ModoAutorizacao = "autonomo" | "perguntar";
+/* mandar arquivo do computador pra um upload na pagina */
+export type EnvioDeArquivos = "desligado" | "perguntar" | "liberado";
 
 // definido na compilacao (MODO_PADRAO=autonomo npm run build); sem ele, pergunta por site
 declare const __MODO_PADRAO__: string | undefined;
@@ -127,6 +137,7 @@ export interface ExtensionConfig {
   dominiosAprovados?: string[];
   pausado?: boolean;
   digitacaoAnimada?: boolean;
+  envioDeArquivos?: EnvioDeArquivos;
   toolSettings?: ToolSettings;
   domainDenyList?: string[];
   ports: number[];
@@ -159,8 +170,9 @@ export async function getConfig(): Promise<ExtensionConfig> {
     config.toolSettings = getDefaultToolSettings();
   }
 
-  if (!config.ports) {
-    config.ports = [DEFAULT_WS_PORT];
+  // instalacao antiga guardou so a 8089: passa pra faixa inteira, senao a segunda sessao nunca conecta
+  if (!config.ports || (config.ports.length === 1 && config.ports[0] === DEFAULT_WS_PORT)) {
+    config.ports = [...PORTAS_PADRAO];
   }
   
   return config;
@@ -305,7 +317,7 @@ export async function isDomainInDenyList(url: string): Promise<boolean> {
  */
 export async function getPorts(): Promise<number[]> {
   const config = await getConfig();
-  return config.ports || [DEFAULT_WS_PORT];
+  return config.ports || [...PORTAS_PADRAO];
 }
 
 /**
@@ -400,6 +412,18 @@ export async function aprovarDominio(dominio: string): Promise<void> {
 export async function revogarDominio(dominio: string): Promise<void> {
   const config = await getConfig();
   config.dominiosAprovados = (config.dominiosAprovados ?? []).filter((d) => d !== dominio.toLowerCase());
+  await saveConfig(config);
+}
+
+/* envio de arquivos: na versao autonoma ja vem liberado; na publica, pergunta a cada arquivo */
+export async function getEnvioDeArquivos(): Promise<EnvioDeArquivos> {
+  const config = await getConfig();
+  return config.envioDeArquivos ?? (MODO_PADRAO === "autonomo" ? "liberado" : "perguntar");
+}
+
+export async function setEnvioDeArquivos(envio: EnvioDeArquivos): Promise<void> {
+  const config = await getConfig();
+  config.envioDeArquivos = envio;
   await saveConfig(config);
 }
 

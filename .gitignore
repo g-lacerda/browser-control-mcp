@@ -56,3 +56,4 @@ web-ext-artifacts/
 
 .DS_Store
 web-ext-artifacts/
+firefox-extension/.amo-upload-uuid

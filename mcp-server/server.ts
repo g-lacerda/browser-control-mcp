@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { BrowserAPI } from "./browser-api";
+import { lerArquivo } from "./arquivos";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 
@@ -371,6 +372,28 @@ mcpServer.tool(
     const r = await browserApi.comando({ cmd: "read-network", tabId, urlPattern, clear }, "network");
     if (r.requests.length === 0) return texto("Nenhuma requisicao registrada.");
     return texto(r.requests.map((q) => `${q.method} ${q.status} ${q.type} ${q.url}`).join("\n"));
+  }
+);
+
+mcpServer.tool(
+  "upload-file",
+  `
+    Send files from this computer into a file upload in one of Claude's tabs. Give full paths.
+    With ref/selector of an <input type=file>, the files go straight into it. Without them, the extension
+    holds the files and delivers them to the next file picker the page opens: call this first, then click
+    the page's "choose file" button. Hidden files, keys/secrets and files over 25 MB are always refused;
+    the user may also have to approve each file in Firefox, depending on the extension settings.
+  `,
+  {
+    tabId: z.number(),
+    paths: z.array(z.string()).min(1).max(10).describe("Full paths of the files, e.g. /home/user/Pictures/photo.jpg"),
+    ref: z.string().optional().describe("Ref of an <input type=file>, when the page has one"),
+    selector: z.string().optional(),
+  },
+  async ({ tabId, paths, ref, selector }) => {
+    const arquivos = await Promise.all(paths.map((p) => lerArquivo(p)));
+    const r = await browserApi.comando({ cmd: "upload-file", tabId, ref, selector, arquivos }, "action-result", 150000);
+    return resultadoDaAcao(r);
   }
 );
 

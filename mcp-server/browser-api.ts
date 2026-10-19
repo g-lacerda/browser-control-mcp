@@ -13,6 +13,8 @@ import { isPortInUse } from "./util";
 import * as crypto from "crypto";
 
 const WS_DEFAULT_PORT = 8089;
+/* a extensao conecta em todas estas: uma sessao do Claude Code por porta */
+export const PORTAS_PADRAO = [WS_DEFAULT_PORT, 8090, 8091, 8092, 8093];
 const EXTENSION_RESPONSE_TIMEOUT_MS = 1000;
 // Capturing may foreground the tab, wait for it to paint, encode the image and transfer a
 // payload orders of magnitude larger than the other responses.
@@ -48,7 +50,9 @@ export class BrowserAPI {
   > = new Map();
 
   async init() {
-    const { secret, port } = readConfig();
+    const config = readConfig();
+    const { secret } = config;
+    let port: number | undefined = config.port;
     if (!secret) {
       throw new Error(
         "EXTENSION_SECRET env var missing. See the extension's options page."
@@ -56,11 +60,27 @@ export class BrowserAPI {
     }
     this.sharedSecret = secret;
 
-    if (await isPortInUse(port)) {
+    /*
+     * Cada sessao do Claude Code sobe o proprio servidor. Com a porta fixa, a
+     * segunda sessao achava a 8089 ocupada e fechava ("Connection closed").
+     * Sem EXTENSION_PORT, pega a primeira livre de 8089 a 8093; a extensao
+     * conecta em todas, entao varias sessoes usam o Firefox juntas.
+     */
+    let livre: number | undefined;
+    for (const candidata of port !== undefined ? [port] : PORTAS_PADRAO) {
+      if (!(await isPortInUse(candidata))) {
+        livre = candidata;
+        break;
+      }
+    }
+    if (livre === undefined) {
       throw new Error(
-        `Configured port ${port} is already in use. Please configure a different port.`
+        port !== undefined
+          ? `A porta ${port} ja esta em uso. Feche a outra sessao ou use outra porta.`
+          : `As portas ${PORTAS_PADRAO.join(", ")} estao todas em uso: ja tem ${PORTAS_PADRAO.length} sessoes do Claude Code usando o Firefox.`
       );
     }
+    port = livre;
 
     // Bind explicitly to both loopback addresses so Firefox connects regardless of how
     // it resolves "localhost". On Linux, getaddrinfo("localhost") often returns ::1
@@ -319,9 +339,8 @@ export class BrowserAPI {
 function readConfig() {
   return {
     secret: process.env.EXTENSION_SECRET,
-    port: process.env.EXTENSION_PORT
-      ? parseInt(process.env.EXTENSION_PORT, 10)
-      : WS_DEFAULT_PORT,
+    // so com EXTENSION_PORT a porta e fixa; sem, o servidor escolhe uma livre da faixa padrao
+    port: process.env.EXTENSION_PORT ? parseInt(process.env.EXTENSION_PORT, 10) : undefined,
   };
 }
 

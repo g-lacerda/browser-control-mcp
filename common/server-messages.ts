@@ -132,6 +132,26 @@ export interface ReadNetworkServerMessage extends ServerMessageBase {
   clear?: boolean;
 }
 
+export interface ArquivoParaEnviar {
+  nome: string;
+  tipo: string;
+  tamanho: number;
+  base64: string;
+}
+
+/*
+ * Enviar arquivo do computador. Com ref/selector de um input[type=file], vai
+ * direto nele; sem, a extensao "arma" o arquivo e entrega no proximo seletor
+ * de arquivo que a pagina abrir (o botao "Escolher imagem" dos apps).
+ */
+export interface UploadFileServerMessage extends ServerMessageBase {
+  cmd: "upload-file";
+  tabId: number;
+  ref?: string;
+  selector?: string;
+  arquivos: ArquivoParaEnviar[];
+}
+
 export type ServerMessage =
   | OpenTabServerMessage
   | CloseTabsServerMessage
@@ -151,6 +171,7 @@ export type ServerMessage =
   | SelectOptionServerMessage
   | RunJsServerMessage
   | ReadConsoleServerMessage
-  | ReadNetworkServerMessage;
+  | ReadNetworkServerMessage
+  | UploadFileServerMessage;
 
 export type ServerMessageRequest = ServerMessage & { correlationId: string };

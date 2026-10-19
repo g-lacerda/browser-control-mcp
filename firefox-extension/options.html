@@ -265,6 +265,13 @@
         <option value="autonomo">Autônomo: age sem perguntar</option>
         <option value="perguntar">Perguntar por site na primeira vez</option>
       </select>
+      <h3>Arquivos do seu computador</h3>
+      <p class="suave">Quando o Claude precisa subir um arquivo (uma foto, um PDF). Arquivos ocultos, chaves e senhas nunca são enviados, em nenhum modo.</p>
+      <select id="envio-arquivos" aria-label="Envio de arquivos">
+        <option value="perguntar">Perguntar a cada envio</option>
+        <option value="liberado">Liberado: envia sem perguntar</option>
+        <option value="desligado">Desligado: nunca envia</option>
+      </select>
       <h3>Sites liberados</h3>
       <ul id="dominios-aprovados"></ul>
     </section>
@@ -276,6 +283,7 @@
         <li>Só as abas do grupo "Claude". As suas não são lidas, listadas nem fotografadas.</li>
         <li>Nada sai do seu computador pela extensão: o próprio Firefox só deixa ela falar com o servidor local.</li>
         <li>Cartão só de teste (sandbox). Número de cartão de verdade é recusado.</li>
+        <li>Arquivos ocultos, chaves e senhas do seu computador nunca são enviados.</li>
         <li>O botão da extensão e o botão "Pausar o Claude" na página param tudo na hora.</li>
         <li>Toda ação fica no registro aqui embaixo.</li>
       </ul>
@@ -318,7 +326,7 @@
         <p class="suave">Combina a extensão com o servidor local. Já vai dentro do comando do passo 2.</p>
         <div class="bloco"><span id="secret-display" class="chave">Carregando…</span><button type="button" data-copiar="secret-display">Copiar</button></div>
         <h3>Portas</h3>
-        <p class="suave">Portas do servidor local, separadas por vírgula. O padrão é 8089.</p>
+        <p class="suave">Portas do servidor local, separadas por vírgula. O padrão é 8089 a 8093, uma por sessão do Claude Code.</p>
         <input type="text" id="ports-input" aria-label="Portas">
         <div class="linha-acoes">
           <button id="save-ports" type="button" class="primario">Salvar portas</button>

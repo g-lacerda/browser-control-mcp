@@ -492,6 +492,106 @@ function lerConsole(padrao?: string, limpar = false) {
   return { entries: entradas.slice(-200), capturing: true };
 }
 
+/*
+ * ── enviar arquivos do computador ──
+ * O servidor local le o arquivo e a background manda pra ca (por mensagem, nao
+ * por codigo injetado: arquivo grande nao cabe numa string de script). Com um
+ * input[type=file] na tela, o arquivo vai direto nele. Sem, o arquivo fica
+ * "armado" e e entregue quando a pagina abrir o seletor (input.click() ou
+ * showPicker()), que e como o botao "Escolher imagem" dos apps funciona.
+ */
+interface ArquivoRecebido {
+  nome: string;
+  tipo: string;
+  base64: string;
+}
+
+const ARMADO_POR_MS = 60_000;
+let armado: File[] | null = null;
+let temporizadorArmado: number | undefined;
+let interceptando = false;
+
+function paraFile(a: ArquivoRecebido): File {
+  const binario = atob(a.base64);
+  const bytes = new Uint8Array(binario.length);
+  for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
+  return new File([bytes], a.nome, { type: a.tipo });
+}
+
+function colocarNoInput(input: HTMLInputElement, arquivos: File[]) {
+  const dt = new DataTransfer();
+  (input.multiple ? arquivos : arquivos.slice(0, 1)).forEach((f) => dt.items.add(f));
+  input.files = dt.files;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+/* troca o click() e o showPicker() dos inputs da pagina: com arquivo armado, entrega em vez de abrir o seletor */
+function interceptarSeletor() {
+  if (interceptando) return;
+  interceptando = true;
+  const pagina = (window as unknown as { wrappedJSObject: { HTMLInputElement: { prototype: HTMLInputElement } } }).wrappedJSObject;
+  const proto = pagina.HTMLInputElement.prototype;
+  const clickOriginal = proto.click;
+  const pickerOriginal = (proto as HTMLInputElement & { showPicker?: () => void }).showPicker;
+  const entregar = (input: HTMLInputElement): boolean => {
+    if (!armado || input.type !== "file") return false;
+    const arquivos = armado;
+    armado = null;
+    clearTimeout(temporizadorArmado);
+    colocarNoInput(input, arquivos);
+    ligarAtividade(`Enviando ${arquivos.length === 1 ? arquivos[0]!.name : `${arquivos.length} arquivos`}`);
+    return true;
+  };
+  exportFunction(
+    function (this: HTMLInputElement) {
+      if (entregar(this)) return;
+      return clickOriginal.call(this);
+    },
+    proto,
+    { defineAs: "click" },
+  );
+  if (pickerOriginal) {
+    exportFunction(
+      function (this: HTMLInputElement) {
+        if (entregar(this)) return;
+        return pickerOriginal.call(this);
+      },
+      proto,
+      { defineAs: "showPicker" },
+    );
+  }
+}
+
+async function enviarArquivos(recebidos: ArquivoRecebido[], ref?: string, seletor?: string): Promise<string> {
+  const arquivos = recebidos.map(paraFile);
+  const nomes = arquivos.map((f) => f.name).join(", ");
+  if (ref || seletor) {
+    const el = alvo(ref, seletor);
+    if (!(el instanceof HTMLInputElement) || el.type !== "file") {
+      throw new Error("Esse elemento nao e um campo de arquivo. Sem ref, o arquivo fica pronto pro proximo seletor que a pagina abrir.");
+    }
+    await rolarAte(el);
+    await moverAte(el, `Enviando ${nomes}`);
+    colocarNoInput(el, arquivos);
+    return `Enviei ${nomes} no campo de arquivo`;
+  }
+  interceptarSeletor();
+  armado = arquivos;
+  clearTimeout(temporizadorArmado);
+  temporizadorArmado = window.setTimeout(() => (armado = null), ARMADO_POR_MS);
+  ligarAtividade(`Arquivo pronto: ${nomes}`);
+  return `Arquivo pronto (${nomes}). Agora clique no botao que abre a escolha de arquivo; vale por 1 minuto.`;
+}
+
+browser.runtime.onMessage.addListener((mensagem: { tipo?: string; arquivos?: ArquivoRecebido[]; ref?: string; selector?: string }) => {
+  if (mensagem?.tipo !== "claude-arquivos" || !mensagem.arquivos) return;
+  return enviarArquivos(mensagem.arquivos, mensagem.ref, mensagem.selector).then(
+    (valor) => ({ ok: true, valor }),
+    (e: unknown) => ({ ok: false, erro: e instanceof Error ? e.message : String(e) }),
+  );
+});
+
 (window as unknown as { __claudeAgente: unknown }).__claudeAgente = {
   lerPagina,
   clicar,

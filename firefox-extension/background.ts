@@ -3,6 +3,7 @@ import { MessageHandler } from "./message-handler";
 import { getConfig, generateSecret, setPausado } from "./extension-config";
 import { acompanharFechamento } from "./abas-claude";
 import { acompanharRede } from "./rede";
+import { atenderPaginaDeAprovacao } from "./aprovacao-arquivos";
 
 function initClient(port: number, secret: string) {
   const wsClient = new WebsocketClient(port, secret);
@@ -36,11 +37,13 @@ async function initExtension() {
 
 acompanharFechamento();
 acompanharRede();
+atenderPaginaDeAprovacao();
 
 /* o botao "Pausar o Claude" que aparece na propria pagina */
-browser.runtime.onMessage.addListener(async (mensagem: { tipo?: string }, remetente) => {
+/* sem async: devolver Promise pra mensagem que nao e nossa roubaria a resposta de outro listener */
+browser.runtime.onMessage.addListener((mensagem: { tipo?: string }, remetente) => {
   if (mensagem?.tipo !== "pausar" || remetente.id !== browser.runtime.id) return;
-  await setPausado(true);
+  return setPausado(true);
 });
 
 initExtension()

@@ -4,6 +4,9 @@
 import {
   getModoAutorizacao,
   setModoAutorizacao,
+  getEnvioDeArquivos,
+  setEnvioDeArquivos,
+  type EnvioDeArquivos,
   getDominiosAprovados,
   aprovarDominio,
   revogarDominio,
@@ -597,6 +600,9 @@ async function carregarModo() {
   const select = document.getElementById("modo-autorizacao") as HTMLSelectElement;
   select.value = await getModoAutorizacao();
   select.onchange = () => void setModoAutorizacao(select.value as ModoAutorizacao);
+  const envio = document.getElementById("envio-arquivos") as HTMLSelectElement;
+  envio.value = await getEnvioDeArquivos();
+  envio.onchange = () => void setEnvioDeArquivos(envio.value as EnvioDeArquivos);
 }
 
 async function carregarDominiosAprovados() {

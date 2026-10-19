@@ -1,4 +1,4 @@
-import type { ServerMessageRequest } from "@browser-control-mcp/common";
+import type { ArquivoParaEnviar, ServerMessageRequest } from "@browser-control-mcp/common";
 import { WebsocketClient } from "./client";
 import {
   isCommandAllowed,
@@ -9,7 +9,9 @@ import {
   getDominiosAprovados,
   estaPausado,
   digitacaoAnimada,
+  getEnvioDeArquivos,
 } from "./extension-config";
+import { pedirAprovacao } from "./aprovacao-arquivos";
 import { abrirAbaDoClaude, exigirAbaDoClaude, idsDasAbasDoClaude } from "./abas-claude";
 import { lerRede } from "./rede";
 import { dominioNaLista, urlPermitida } from "./regras";
@@ -116,6 +118,9 @@ export class MessageHandler {
         break;
       case "read-network":
         await this.lerRedeDaAba(req.correlationId, req.tabId, req.urlPattern, req.clear ?? false);
+        break;
+      case "upload-file":
+        await this.enviarArquivos(req.correlationId, req.tabId, req.arquivos, req.ref, req.selector);
         break;
       default:
         const _exhaustiveCheck: never = req;
@@ -459,6 +464,30 @@ export class MessageHandler {
       [padrao, limpar]
     );
     await this.client.sendResourceToServer({ resource: "console", correlationId, entries, capturing });
+  }
+
+  /*
+   * Arquivo do computador pra um upload da pagina. A autorizacao de envio vem
+   * das opcoes: desligado, perguntar a cada envio (abre a aprovacao) ou liberado.
+   */
+  private async enviarArquivos(correlationId: string, tabId: number, arquivos: ArquivoParaEnviar[], ref?: string, selector?: string) {
+    const tab = await this.abaLiberada(tabId);
+    const envio = await getEnvioDeArquivos();
+    if (envio === "desligado") {
+      throw new Error("O envio de arquivos esta desligado nas opcoes da extensao. Peca pra pessoa ligar, se ela quiser.");
+    }
+    if (envio === "perguntar") {
+      const site = tab.url ? new URL(tab.url).hostname : "este site";
+      if (!(await pedirAprovacao(site, arquivos))) throw new Error("A pessoa nao autorizou o envio desse arquivo.");
+    }
+    await this.garantirAgente(tabId);
+    const resposta = (await browser.tabs.sendMessage(tabId, { tipo: "claude-arquivos", arquivos, ref, selector })) as
+      | { ok: boolean; valor?: string; erro?: string }
+      | undefined;
+    if (!resposta) throw new Error("A pagina nao respondeu. Leia a pagina de novo e tente outra vez.");
+    if (!resposta.ok) throw new Error(resposta.erro);
+    const depois = await browser.tabs.get(tabId);
+    await this.client.sendResourceToServer({ resource: "action-result", correlationId, result: resposta.valor ?? "", url: depois.url, title: depois.title });
   }
 
   private async lerRedeDaAba(correlationId: string, tabId: number, padrao?: string, limpar = false) {
