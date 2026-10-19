@@ -1,0 +1,20 @@
+{
+  "categories": { "firefox": ["web-development", "tabs"] },
+  "summary": {
+    "pt-BR": "Deixa o Claude Code navegar, clicar e digitar por você no Firefox, só nas abas que ele mesmo abre no grupo \"Claude\". Conexão só local, com pausa a um clique.",
+    "en-US": "Let Claude Code browse, click and type for you in Firefox, only in the tabs it opens itself in the \"Claude\" tab group. Local-only connection, one-click pause."
+  },
+  "description": {
+    "pt-BR": "<b>Controle o Firefox pelo Claude Code.</b> Esta extensão conecta o Firefox a um servidor MCP que roda no seu computador, e o Claude Code passa a abrir páginas, ler os elementos, clicar, digitar, rolar, escolher opções, ler o console e as requisições de rede e tirar print. Você vê tudo na tela: um cursor laranja, a borda brilhando e uma etiqueta dizendo o que está sendo feito.\n\n<b>Suas abas ficam de fora.</b> O Claude só age nas abas que ele mesmo abre, no grupo \"Claude\". As suas não são lidas, listadas nem fotografadas. O histórico vem desligado.\n\n<b>Segurança</b>\n<ul><li>Conexão só com o servidor local (localhost), imposta pela política de segurança da própria extensão, com mensagens assinadas por uma chave secreta.</li><li>Modo autônomo ou \"perguntar por site\", lista de sites bloqueados e botão de pausar na barra e na própria página.</li><li>Cartão só de teste (sandbox): número de cartão de verdade é recusado.</li><li>Registro de todas as ações nas opções.</li></ul>\n\n<b>Precisa do servidor MCP</b>, que é código aberto: https://github.com/g-lacerda/browser-control-mcp. A página de opções da extensão traz o passo a passo.\n\nBaseada no Browser Control MCP de eyalzh (licença MIT). Projeto independente, sem ligação oficial com a Anthropic.",
+    "en-US": "<b>Control Firefox from Claude Code.</b> This extension connects Firefox to an MCP server running on your computer, so Claude Code can open pages, read page elements, click, type, scroll, pick options, read the console and network requests, and take screenshots. You see everything on screen: an orange cursor, a glowing border and a label saying what is happening.\n\n<b>Your own tabs stay off limits.</b> Claude only acts in the tabs it opens itself, in the \"Claude\" tab group. Your tabs are never read, listed or captured. History access is off by default.\n\n<b>Safety</b>\n<ul><li>Talks only to the local server (localhost), enforced by the extension's own content security policy, with messages signed by a shared secret.</li><li>Autonomous mode or ask per site, a blocked sites list, and a pause button in the toolbar and on the page.</li><li>Test (sandbox) cards only: real card numbers are refused.</li><li>Every action is recorded in the options page.</li></ul>\n\n<b>Requires the MCP server</b>, which is open source: https://github.com/g-lacerda/browser-control-mcp. The options page has step-by-step setup.\n\nBased on Browser Control MCP by eyalzh (MIT license). Independent project, not affiliated with Anthropic."
+  },
+  "homepage": { "pt-BR": "https://github.com/g-lacerda/browser-control-mcp", "en-US": "https://github.com/g-lacerda/browser-control-mcp" },
+  "support_url": { "pt-BR": "https://github.com/g-lacerda/browser-control-mcp/issues", "en-US": "https://github.com/g-lacerda/browser-control-mcp/issues" },
+  "version": {
+    "license": "MIT",
+    "release_notes": {
+      "pt-BR": "Primeira versão pública: agir nas abas do grupo Claude, animações de cursor, modo autônomo ou por site, pausa e cartão só de teste.",
+      "en-US": "First public release: act in Claude's tab group, cursor animations, autonomous or per-site mode, pause, test cards only."
+    }
+  }
+}
