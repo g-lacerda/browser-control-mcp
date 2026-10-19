@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Claude no Navegador",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "description": "Deixa o Claude (Claude Code) navegar, clicar e digitar nas abas do grupo Claude, com a conexão só local.",
   "permissions": [
     "tabs",
