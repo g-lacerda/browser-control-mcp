@@ -16,9 +16,13 @@ const mcpServer = new McpServer({
 mcpServer.tool(
   "open-browser-tab",
   "Open a new tab in Firefox, inside the \"Claude\" tab group. Returns the tab id. Only tabs opened this way can be read or acted on; the user's own tabs are off limits. http and https URLs (including http://localhost) are allowed.",
-  { url: z.string() },
-  async ({ url }) => {
-    const openedTabId = await browserApi.openTab(url);
+  {
+    url: z.string(),
+    width: z.number().int().min(320).max(2560).optional().describe("Open in a separate window this wide (CSS px), e.g. 390 to test a phone layout"),
+    height: z.number().int().min(480).max(1600).optional().describe("Window height when width is given, e.g. 844"),
+  },
+  async ({ url, width, height }) => {
+    const openedTabId = await browserApi.openTab(url, width, height);
     if (openedTabId !== undefined) {
       return {
         content: [

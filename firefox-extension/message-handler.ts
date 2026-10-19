@@ -56,7 +56,7 @@ export class MessageHandler {
   private async executar(req: ServerMessageRequest): Promise<void> {
     switch (req.cmd) {
       case "open-tab":
-        await this.openUrl(req.correlationId, req.url);
+        await this.openUrl(req.correlationId, req.url, req.largura, req.altura);
         break;
       case "close-tabs":
         await this.closeTabs(req.correlationId, req.tabIds);
@@ -182,12 +182,12 @@ export class MessageHandler {
     );
   }
 
-  private async openUrl(correlationId: string, url: string): Promise<void> {
+  private async openUrl(correlationId: string, url: string, largura?: number, altura?: number): Promise<void> {
     if (!urlPermitida(url)) {
       throw new Error("So da pra abrir enderecos http ou https");
     }
     await this.autorizar(url);
-    const tab = await abrirAbaDoClaude(url);
+    const tab = await abrirAbaDoClaude(url, largura ? { largura, altura: altura ?? 844 } : undefined);
     await this.client.sendResourceToServer({
       resource: "opened-tab-id",
       correlationId,

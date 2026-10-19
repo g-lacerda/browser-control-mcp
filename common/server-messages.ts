@@ -5,6 +5,9 @@ export interface ServerMessageBase {
 export interface OpenTabServerMessage extends ServerMessageBase {
   cmd: "open-tab";
   url: string;
+  /* com tamanho, abre numa janela propria desse tamanho (testar celular) */
+  largura?: number;
+  altura?: number;
 }
 
 export interface CloseTabsServerMessage extends ServerMessageBase {

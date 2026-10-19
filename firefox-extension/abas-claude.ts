@@ -34,8 +34,15 @@ async function grupoDaJanela(windowId: number): Promise<number | undefined> {
 }
 
 /* abre a aba ja dentro do grupo "Claude" (cria o grupo na primeira vez) */
-export async function abrirAbaDoClaude(url: string): Promise<browser.tabs.Tab> {
-  const aba = await browser.tabs.create({ url, active: false });
+export async function abrirAbaDoClaude(url: string, janela?: { largura: number; altura: number }): Promise<browser.tabs.Tab> {
+  /*
+   * Com tamanho, a aba vai numa janela propria daquele tamanho (testar layout
+   * de celular). O conteudo fica um pouco menor que a janela por causa da
+   * barra do navegador.
+   */
+  const aba = janela
+    ? ((await browser.windows.create({ url, width: janela.largura, height: janela.altura, focused: false })).tabs?.[0] as browser.tabs.Tab)
+    : await browser.tabs.create({ url, active: false });
   if (aba.id === undefined) throw new Error("O Firefox nao devolveu a aba aberta");
   await gravarAbas([...(await lerAbas()), aba.id]);
   const existente = aba.windowId !== undefined ? await grupoDaJanela(aba.windowId) : undefined;

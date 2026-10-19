@@ -146,10 +146,12 @@ export class BrowserAPI {
     return this.wsServers[0]?.options.port;
   }
 
-  async openTab(url: string): Promise<number | undefined> {
+  async openTab(url: string, largura?: number, altura?: number): Promise<number | undefined> {
     const correlationId = this.sendMessageToExtension({
       cmd: "open-tab",
       url,
+      largura,
+      altura,
     });
     const message = await this.waitForResponse(correlationId, "opened-tab-id", ACAO_RESPONSE_TIMEOUT_MS);
     return message.tabId;
