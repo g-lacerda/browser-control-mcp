@@ -444,16 +444,35 @@ export class MessageHandler {
     await this.client.sendResourceToServer({ resource: "action-result", correlationId, result, url: tab.url, title: tab.title });
   }
 
+  /*
+   * Roda como no console: o Firefox devolve o valor da ultima expressao (com
+   * const, if e o que for). So quando o codigo tem return solto, que nao vale
+   * fora de funcao, ele vai embrulhado numa funcao async.
+   */
   private async rodarJs(correlationId: string, tabId: number, codigo: string) {
     await this.abaLiberada(tabId);
-    const corpo = /\breturn\b/.test(codigo) ? codigo : `return (${codigo})`;
-    const [value] = await browser.tabs.executeScript(tabId, {
-      code: `(async () => { ${corpo} })().then(
-        (v) => { try { return v === undefined ? "undefined" : JSON.stringify(v) } catch (e) { return String(v) } },
-        (e) => "Erro: " + ((e && e.message) || e)
-      )`,
-    });
-    await this.client.sendResourceToServer({ resource: "js-result", correlationId, value: String(value) });
+    const serializar = (v: unknown): string => {
+      if (v === undefined) return "undefined";
+      try {
+        return JSON.stringify(v) ?? String(v);
+      } catch {
+        return String(v);
+      }
+    };
+    let valor: unknown;
+    try {
+      [valor] = await browser.tabs.executeScript(tabId, { code: codigo });
+    } catch (erro) {
+      const mensagem = erro instanceof Error ? erro.message : String(erro);
+      if (!/return/i.test(mensagem)) {
+        await this.client.sendResourceToServer({ resource: "js-result", correlationId, value: `Erro: ${mensagem}` });
+        return;
+      }
+      [valor] = await browser.tabs.executeScript(tabId, {
+        code: `(async () => { ${codigo} })().then((v) => { try { return v === undefined ? undefined : JSON.parse(JSON.stringify(v)) } catch (e) { return String(v) } }, (e) => "Erro: " + ((e && e.message) || e))`,
+      });
+    }
+    await this.client.sendResourceToServer({ resource: "js-result", correlationId, value: serializar(valor) });
   }
 
   private async lerConsole(correlationId: string, tabId: number, padrao?: string, limpar = false) {

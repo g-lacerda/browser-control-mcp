@@ -50,7 +50,13 @@ let temporizadorAtivo: number | undefined;
 
 const espera = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/*
+ * Sem animacao quando a pessoa pediu menos movimento, e tambem com a aba em
+ * segundo plano: ali o Firefox segura a rolagem suave ate a aba aparecer, e a
+ * leitura seguinte pegava a pagina no lugar antigo.
+ */
 function semMovimento(): boolean {
+  if (document.visibilityState !== "visible") return true;
   return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
