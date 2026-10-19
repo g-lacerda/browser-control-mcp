@@ -4,7 +4,7 @@
 import "../agente-pagina";
 
 type Agente = {
-  lerPagina: (so: boolean) => string;
+  lerPagina: (so: boolean) => Promise<string>;
   digitar: (texto: string, ref?: string, seletor?: string, limpar?: boolean, enviar?: boolean) => Promise<string>;
   clicar: (ref?: string, seletor?: string) => Promise<string>;
 };
@@ -27,8 +27,8 @@ beforeEach(() => {
     <button id="entrar">Entrar</button>`;
 });
 
-it("le a pagina com referencias e nunca mostra o valor da senha", () => {
-  const texto = agente().lerPagina(true);
+it("le a pagina com referencias e nunca mostra o valor da senha", async () => {
+  const texto = await agente().lerPagina(true);
   expect(texto).toContain('textbox (email) "E-mail"');
   expect(texto).toContain('button "Entrar"');
   expect(texto).toContain("preenchido");
@@ -50,7 +50,7 @@ it("cartao real e recusado ate em campo comum", async () => {
 it("senha pode ser digitada e clicar acha o botao pela referencia", async () => {
   await agente().digitar("nova-senha", undefined, "#senha");
   expect((document.getElementById("senha") as HTMLInputElement).value).toBe("nova-senha");
-  const texto = agente().lerPagina(true);
+  const texto = await agente().lerPagina(true);
   const ref = /\[(e\d+)\] button "Entrar"/.exec(texto)![1];
   let clicado = false;
   document.getElementById("entrar")!.addEventListener("click", () => (clicado = true));

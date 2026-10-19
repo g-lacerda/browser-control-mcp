@@ -132,10 +132,10 @@ function desligarAtividade() {
   peca("etiqueta").textContent = "";
 }
 
-async function moverAte(el: Element, texto: string) {
+async function moverAte(el: Element, texto: string, ponto?: { x: number; y: number }) {
   ligarAtividade(texto);
   const r = el.getBoundingClientRect();
-  const destino = { x: r.left + Math.min(r.width / 2, 40), y: r.top + r.height / 2 };
+  const destino = ponto ?? { x: r.left + Math.min(r.width / 2, 40), y: r.top + r.height / 2 };
   const c = peca<HTMLDivElement>("cursor");
   const anima = !semMovimento();
   c.style.transition = anima ? `left ${DURACAO_MOVIMENTO_MS}ms ease, top ${DURACAO_MOVIMENTO_MS}ms ease, opacity 200ms ease` : "none";
@@ -286,8 +286,28 @@ function registrar(el: Element): string {
   return ref;
 }
 
-function lerPagina(soInterativos: boolean): string {
+/* apps montam a tela aos poucos: espera 300ms sem mudanca no DOM (no maximo 2s) antes de ler */
+function esperarAssentar(): Promise<void> {
+  return new Promise((resolve) => {
+    let quieto = window.setTimeout(fim, 300);
+    const limite = window.setTimeout(fim, 2000);
+    const observador = new MutationObserver(() => {
+      clearTimeout(quieto);
+      quieto = window.setTimeout(fim, 300);
+    });
+    observador.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+    function fim() {
+      observador.disconnect();
+      clearTimeout(quieto);
+      clearTimeout(limite);
+      resolve();
+    }
+  });
+}
+
+async function lerPagina(soInterativos: boolean): Promise<string> {
   varrer();
+  await esperarAssentar();
   proximaRef = 1;
   porRef = new Map();
   const linhas: string[] = [];
@@ -329,24 +349,50 @@ function alvo(ref?: string, seletor?: string, x?: number, y?: number): Element {
   return el;
 }
 
-function eventoDeMouse(el: Element, tipo: string) {
+function centroDe(el: Element): { x: number; y: number } {
   const r = el.getBoundingClientRect();
-  const opcoes = { bubbles: true, cancelable: true, view: window, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+
+/*
+ * Todo evento leva a posicao de verdade (a pedida ou o centro do elemento).
+ * Antes o clique saia com el.click(), que nao tem coordenada: a pagina via o
+ * clique em (0, 0), e marcar ponto numa imagem caia no canto.
+ */
+function eventoDeMouse(el: Element, tipo: string, ponto: { x: number; y: number } = centroDe(el)) {
+  const apertado = tipo === "pointerdown" || tipo === "mousedown";
+  const opcoes = {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    view: window,
+    clientX: ponto.x,
+    clientY: ponto.y,
+    screenX: window.screenX + ponto.x,
+    screenY: window.screenY + ponto.y,
+    button: 0,
+    buttons: apertado ? 1 : 0,
+    detail: tipo === "dblclick" ? 2 : 1,
+    pointerId: 1,
+    pointerType: "mouse",
+    isPrimary: true,
+  };
   const Construtor = tipo.startsWith("pointer") && typeof PointerEvent !== "undefined" ? PointerEvent : MouseEvent;
   el.dispatchEvent(new Construtor(tipo, opcoes));
 }
 
 async function clicar(ref?: string, seletor?: string, x?: number, y?: number, duplo = false): Promise<string> {
   const el = alvo(ref, seletor, x, y);
-  await rolarAte(el);
-  await moverAte(el, `Clicando em ${curto(nomeDoElemento(el), 40) || papelDoElemento(el)}`);
+  // com coordenada, o ponto e da tela como esta: rolar mudaria o que esta embaixo dele
+  const pelaCoordenada = x !== undefined && y !== undefined && !ref && !seletor;
+  if (!pelaCoordenada) await rolarAte(el);
+  const ponto = pelaCoordenada ? { x: x!, y: y! } : centroDe(el);
+  await moverAte(el, `Clicando em ${curto(nomeDoElemento(el), 40) || papelDoElemento(el)}`, ponto);
   pulsar();
-  for (const tipo of ["pointerover", "pointerenter", "mouseover", "pointerdown", "mousedown"]) eventoDeMouse(el, tipo);
+  for (const tipo of ["pointerover", "pointerenter", "mouseover", "pointerdown", "mousedown"]) eventoDeMouse(el, tipo, ponto);
   if (el instanceof HTMLElement) el.focus({ preventScroll: true });
-  for (const tipo of ["pointerup", "mouseup"]) eventoDeMouse(el, tipo);
-  if (el instanceof HTMLElement) el.click();
-  else eventoDeMouse(el, "click");
-  if (duplo) eventoDeMouse(el, "dblclick");
+  for (const tipo of ["pointerup", "mouseup", "click"]) eventoDeMouse(el, tipo, ponto);
+  if (duplo) eventoDeMouse(el, "dblclick", ponto);
   return `Cliquei em ${papelDoElemento(el)} "${nomeDoElemento(el)}"`;
 }
 
@@ -429,6 +475,19 @@ function apertarTecla(tecla: string): string {
   return `Apertei ${tecla}`;
 }
 
+/* o conteiner rolavel sob o meio da tela, subindo pelos pais; nulo quando quem rola e a propria janela */
+function conteinerRolavel(eixo: "x" | "y"): Element | null {
+  let el: Element | null = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+  while (el && el !== document.body && el !== document.documentElement) {
+    const estilo = window.getComputedStyle(el);
+    const overflow = eixo === "y" ? estilo.overflowY : estilo.overflowX;
+    const sobra = eixo === "y" ? el.scrollHeight - el.clientHeight : el.scrollWidth - el.clientWidth;
+    if ((overflow === "auto" || overflow === "scroll") && sobra > 1) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
 async function rolar(ref?: string, direcao: "up" | "down" | "left" | "right" = "down", quantidade = 3): Promise<string> {
   if (ref) {
     const el = alvo(ref);
@@ -440,7 +499,9 @@ async function rolar(ref?: string, direcao: "up" | "down" | "left" | "right" = "
   const dx = direcao === "left" ? -passo : direcao === "right" ? passo : 0;
   const dy = direcao === "up" ? -passo : direcao === "down" ? passo : 0;
   ligarAtividade("Rolando a página");
-  window.scrollBy({ left: dx, top: dy, behavior: semMovimento() ? "auto" : "smooth" });
+  // apps (React Native web e afins) rolam dentro de um conteiner, nao na janela
+  const alvoDaRolagem = conteinerRolavel(dy !== 0 ? "y" : "x") ?? window;
+  alvoDaRolagem.scrollBy({ left: dx, top: dy, behavior: semMovimento() ? "auto" : "smooth" });
   if (!semMovimento()) await espera(380);
   return `Rolei ${direcao} (${passo}px)`;
 }
