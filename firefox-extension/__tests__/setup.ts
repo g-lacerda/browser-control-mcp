@@ -12,6 +12,9 @@ const mockBrowser = {
     update: jest.fn(),
     group: jest.fn(),
     captureVisibleTab: jest.fn(),
+    goBack: jest.fn(),
+    goForward: jest.fn(),
+    reload: jest.fn(),
     onUpdated: { addListener: jest.fn() },
     onRemoved: { addListener: jest.fn() },
   },
@@ -22,6 +25,7 @@ const mockBrowser = {
   },
   tabGroups: {
     update: jest.fn(),
+    query: jest.fn().mockResolvedValue([]),
   },
   history: {
     search: jest.fn(),
@@ -35,6 +39,15 @@ const mockBrowser = {
         get: jest.fn(),
         set: jest.fn(),
     },
+    session: {
+        get: jest.fn().mockResolvedValue({}),
+        set: jest.fn().mockResolvedValue(undefined),
+    },
+    onChanged: { addListener: jest.fn() },
+  },
+  webRequest: {
+    onCompleted: { addListener: jest.fn() },
+    onErrorOccurred: { addListener: jest.fn() },
   },
   permissions: {
     contains: jest.fn(),

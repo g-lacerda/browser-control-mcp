@@ -68,6 +68,51 @@ export interface ScreenshotExtensionMessage extends ExtensionMessageBase {
   mimeType: string;
 }
 
+export interface ActionResultExtensionMessage extends ExtensionMessageBase {
+  resource: "action-result";
+  // o que aconteceu, em texto curto pro modelo
+  result: string;
+  url?: string;
+  title?: string;
+}
+
+export interface SnapshotExtensionMessage extends ExtensionMessageBase {
+  resource: "snapshot";
+  url: string;
+  title: string;
+  text: string;
+}
+
+export interface JsResultExtensionMessage extends ExtensionMessageBase {
+  resource: "js-result";
+  value: string;
+}
+
+export interface ConsoleEntry {
+  level: string;
+  text: string;
+  timestamp: number;
+}
+
+export interface ConsoleExtensionMessage extends ExtensionMessageBase {
+  resource: "console";
+  entries: ConsoleEntry[];
+  capturing: boolean;
+}
+
+export interface NetworkEntry {
+  url: string;
+  method: string;
+  status: number;
+  type: string;
+  timestamp: number;
+}
+
+export interface NetworkExtensionMessage extends ExtensionMessageBase {
+  resource: "network";
+  requests: NetworkEntry[];
+}
+
 export type ExtensionMessage =
   | TabContentExtensionMessage
   | TabsExtensionMessage
@@ -77,7 +122,12 @@ export type ExtensionMessage =
   | FindHighlightExtensionMessage
   | TabsClosedExtensionMessage
   | TabGroupCreatedExtensionMessage
-  | ScreenshotExtensionMessage;
+  | ScreenshotExtensionMessage
+  | ActionResultExtensionMessage
+  | SnapshotExtensionMessage
+  | JsResultExtensionMessage
+  | ConsoleExtensionMessage
+  | NetworkExtensionMessage;
 
 export interface ExtensionError {
   correlationId: string;

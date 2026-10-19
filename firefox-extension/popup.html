@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <style>
+    :root { --fundo: #fbfaf7; --texto: #1f1d1a; --suave: #6b665e; --linha: #e4e0d8; --perigo: #d93025; --ok: #1a7f4b; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fundo: #1c1b19; --texto: #f2efe9; --suave: #a8a196; --linha: #34312c; }
+    }
+    body { margin: 0; width: 280px; font: 13px/1.4 system-ui, sans-serif; background: var(--fundo); color: var(--texto); }
+    main { padding: 14px; display: grid; gap: 12px; }
+    h1 { font-size: 14px; margin: 0; }
+    .estado { display: flex; align-items: center; gap: 8px; color: var(--suave); }
+    .ponto { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
+    .pausado .ponto { background: var(--perigo); }
+    button { font: inherit; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--linha); background: transparent; color: var(--texto); cursor: pointer; }
+    button.pausar { background: var(--perigo); border-color: var(--perigo); color: #fff; font-weight: 600; }
+    button.liberar { background: var(--ok); border-color: var(--ok); color: #fff; font-weight: 600; }
+    button:focus-visible, select:focus-visible { outline: 2px solid #4a7dff; outline-offset: 2px; }
+    label { display: grid; gap: 4px; color: var(--suave); }
+    select { font: inherit; padding: 7px; border-radius: 8px; border: 1px solid var(--linha); background: var(--fundo); color: var(--texto); }
+    .dica { color: var(--suave); font-size: 12px; margin: 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Claude no Firefox</h1>
+    <div id="estado" class="estado"><span class="ponto"></span><span id="estado-texto">Liberado</span></div>
+    <button id="pausa" type="button" class="pausar">Pausar o Claude</button>
+    <label>Modo
+      <select id="modo">
+        <option value="autonomo">Autônomo: age sem perguntar</option>
+        <option value="perguntar">Perguntar por site na primeira vez</option>
+      </select>
+    </label>
+    <p class="dica">O Claude só mexe nas abas do grupo "Claude". As suas ficam de fora.</p>
+    <button id="opcoes" type="button">Opções, sites e registro</button>
+  </main>
+  <script src="dist/popup.js"></script>
+</body>
+</html>

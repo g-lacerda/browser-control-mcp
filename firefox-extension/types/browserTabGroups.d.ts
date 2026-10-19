@@ -15,7 +15,20 @@ declare namespace browser.tabGroups {
 
   interface TabGroup {
     id: number;
+    title?: string;
+    color?: Color;
+    windowId?: number;
+    collapsed?: boolean;
   }
+
+  interface QueryInfo {
+    windowId?: number;
+    title?: string;
+    color?: Color;
+    collapsed?: boolean;
+  }
+
+  function query(queryInfo: QueryInfo): Promise<TabGroup[]>;
 
   interface GroupUpdateProperties {
     collapsed?: boolean;
@@ -32,6 +45,8 @@ declare namespace browser.tabGroups {
 declare namespace browser.tabs {
   interface GroupOptions {
     tabIds: number[];
+    // junta num grupo que ja existe em vez de criar outro
+    groupId?: number;
   }
 
   function group(options: GroupOptions): Promise<number>;

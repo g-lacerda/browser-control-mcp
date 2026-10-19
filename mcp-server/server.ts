@@ -8,13 +8,13 @@ import relativeTime from "dayjs/plugin/relativeTime";
 dayjs.extend(relativeTime);
 
 const mcpServer = new McpServer({
-  name: "BrowserControl",
+  name: "ClaudeNoFirefox",
   version: "1.5.2",
 });
 
 mcpServer.tool(
   "open-browser-tab",
-  "Open a new tab in the user's browser (useful when the user asks to open a website)",
+  "Open a new tab in Firefox, inside the \"Claude\" tab group. Returns the tab id. Only tabs opened this way can be read or acted on; the user's own tabs are off limits. http and https URLs (including http://localhost) are allowed.",
   { url: z.string() },
   async ({ url }) => {
     const openedTabId = await browserApi.openTab(url);
@@ -49,7 +49,7 @@ mcpServer.tool(
 
 mcpServer.tool(
   "get-list-of-open-tabs",
-  "Get the list of open tabs in the user's browser. Use offset and limit parameters for pagination when there are many tabs.",
+  "List the tabs in the \"Claude\" tab group (the user's own tabs are never listed). Use offset and limit for pagination.",
   {
     offset: z.number().int().min(0).default(0).describe("Starting index for pagination (0-based, must be >= 0)"),
     limit: z.number().default(100).describe("Maximum number of tabs to return (default: 100, max: 500)"),
@@ -236,11 +236,9 @@ mcpServer.tool(
 mcpServer.tool(
   "capture-tab-screenshot",
   `
-    Capture a screenshot of the visible area of a browser tab, by tab ID.
-    The user must authorize each tab by clicking the extension's toolbar button while that tab is open.
-    If the tab is not authorized, this tool returns an error explaining what to ask the user to do; relay that
-    request to the user and retry afterwards. Authorization ends when the tab navigates or closes.
-    Capturing brings the tab to the foreground momentarily.
+    Capture a screenshot of the visible area of one of Claude's tabs, by tab ID.
+    Capturing brings the tab to the foreground momentarily. Only the page inside the tab is captured,
+    never the rest of the screen.
   `,
   {
     tabId: z.number(),
@@ -248,13 +246,7 @@ mcpServer.tool(
       .enum(["jpeg", "png"])
       .default("jpeg")
       .describe("Use png only when exact pixel fidelity matters, as it is much larger"),
-    quality: z
-      .number()
-      .int()
-      .min(10)
-      .max(100)
-      .default(70)
-      .describe("JPEG quality, ignored for png"),
+    quality: z.number().int().min(10).max(100).default(70).describe("JPEG quality, ignored for png"),
     scale: z
       .number()
       .min(0.1)
@@ -263,21 +255,122 @@ mcpServer.tool(
       .describe("Image scale relative to CSS pixels, lower values produce smaller images"),
   },
   async ({ tabId, format, quality, scale }) => {
-    const screenshot = await browserApi.captureScreenshot(
-      tabId,
-      format,
-      quality,
-      scale
-    );
+    const screenshot = await browserApi.captureScreenshot(tabId, format, quality, scale);
     return {
-      content: [
-        {
-          type: "image",
-          data: screenshot.imageData,
-          mimeType: screenshot.mimeType,
-        },
-      ],
+      content: [{ type: "image", data: screenshot.imageData, mimeType: screenshot.mimeType }],
     };
+  }
+);
+
+/* ── agir na pagina (so nas abas do grupo "Claude") ── */
+
+const texto = (t: string) => ({ content: [{ type: "text" as const, text: t }] });
+const resultadoDaAcao = (r: { result: string; url?: string; title?: string }) =>
+  texto(`${r.result}\nPagina: ${r.title ?? ""} (${r.url ?? ""})`);
+
+const alvo = {
+  ref: z.string().optional().describe("Element reference from read-page-elements, like e12 (preferred)"),
+  selector: z.string().optional().describe("CSS selector, when there is no ref"),
+};
+
+mcpServer.tool(
+  "navigate-tab",
+  "Navigate one of Claude's tabs to a URL, or go back/forward/reload. Waits for the page to load.",
+  { tabId: z.number(), url: z.string().describe('URL, or "back", "forward", "reload"') },
+  async ({ tabId, url }) => resultadoDaAcao(await browserApi.comando({ cmd: "navigate", tabId, url }, "action-result"))
+);
+
+mcpServer.tool(
+  "read-page-elements",
+  `
+    Read the page of one of Claude's tabs as a list of elements with references (e1, e2...), their role,
+    name and state. Use the refs with click/type/select. Refs are renewed on every read, so read again
+    after the page changes. interactiveOnly=false also includes headings and text blocks.
+  `,
+  { tabId: z.number(), interactiveOnly: z.boolean().default(true) },
+  async ({ tabId, interactiveOnly }) => {
+    const r = await browserApi.comando({ cmd: "snapshot", tabId, interactiveOnly }, "snapshot");
+    return texto(`Pagina: ${r.title} (${r.url})\n${r.text || "(nenhum elemento visivel)"}`);
+  }
+);
+
+mcpServer.tool(
+  "click-element",
+  "Click an element in one of Claude's tabs, by ref (from read-page-elements), CSS selector, or x/y viewport coordinates.",
+  { tabId: z.number(), ...alvo, x: z.number().optional(), y: z.number().optional(), double: z.boolean().default(false) },
+  async ({ tabId, ref, selector, x, y, double }) =>
+    resultadoDaAcao(await browserApi.comando({ cmd: "click", tabId, ref, selector, x, y, double }, "action-result"))
+);
+
+mcpServer.tool(
+  "type-text",
+  `
+    Type text into an input, textarea or editable element in one of Claude's tabs. clear=true replaces the
+    current value. submit=true presses Enter afterwards. Real credit card numbers are refused by the
+    extension: only sandbox/test cards are accepted.
+  `,
+  { tabId: z.number(), ...alvo, text: z.string(), clear: z.boolean().default(true), submit: z.boolean().default(false) },
+  async ({ tabId, ref, selector, text, clear, submit }) =>
+    resultadoDaAcao(await browserApi.comando({ cmd: "type", tabId, ref, selector, text, clear, submit }, "action-result"))
+);
+
+mcpServer.tool(
+  "press-key",
+  "Press a key on the focused element of one of Claude's tabs (Enter, Tab, Escape, ArrowDown...).",
+  { tabId: z.number(), key: z.string() },
+  async ({ tabId, key }) => resultadoDaAcao(await browserApi.comando({ cmd: "press-key", tabId, key }, "action-result"))
+);
+
+mcpServer.tool(
+  "scroll-page",
+  "Scroll one of Claude's tabs: to an element (ref) or in a direction.",
+  {
+    tabId: z.number(),
+    ref: z.string().optional(),
+    direction: z.enum(["up", "down", "left", "right"]).default("down"),
+    amount: z.number().int().min(1).max(30).default(3),
+  },
+  async ({ tabId, ref, direction, amount }) =>
+    resultadoDaAcao(await browserApi.comando({ cmd: "scroll", tabId, ref, direction, amount }, "action-result"))
+);
+
+mcpServer.tool(
+  "select-option",
+  "Choose an option in a <select> in one of Claude's tabs, by option value or visible text.",
+  { tabId: z.number(), ...alvo, value: z.string() },
+  async ({ tabId, ref, selector, value }) =>
+    resultadoDaAcao(await browserApi.comando({ cmd: "select-option", tabId, ref, selector, value }, "action-result"))
+);
+
+mcpServer.tool(
+  "run-javascript",
+  "Run JavaScript in one of Claude's tabs (DOM access). Use return for multi-statement code; the result comes back as JSON.",
+  { tabId: z.number(), code: z.string() },
+  async ({ tabId, code }) => {
+    const r = await browserApi.comando({ cmd: "run-js", tabId, code }, "js-result");
+    return texto(r.value);
+  }
+);
+
+mcpServer.tool(
+  "read-console",
+  "Read console messages of one of Claude's tabs. Capture starts on the first call, so call once before reproducing the issue. pattern is a regex filter.",
+  { tabId: z.number(), pattern: z.string().optional(), clear: z.boolean().default(false) },
+  async ({ tabId, pattern, clear }) => {
+    const r = await browserApi.comando({ cmd: "read-console", tabId, pattern, clear }, "console");
+    if (r.entries.length === 0) return texto("Nenhuma mensagem no console desde que a captura comecou.");
+    return texto(r.entries.map((e) => `[${e.level}] ${e.text}`).join("\n"));
+  }
+);
+
+mcpServer.tool(
+  "read-network-requests",
+  "Read the network requests made by one of Claude's tabs since it was opened (most recent last). urlPattern filters by substring.",
+  { tabId: z.number(), urlPattern: z.string().optional(), clear: z.boolean().default(false) },
+  async ({ tabId, urlPattern, clear }) => {
+    const r = await browserApi.comando({ cmd: "read-network", tabId, urlPattern, clear }, "network");
+    if (r.requests.length === 0) return texto("Nenhuma requisicao registrada.");
+    return texto(r.requests.map((q) => `${q.method} ${q.status} ${q.type} ${q.url}`).join("\n"));
   }
 );
 

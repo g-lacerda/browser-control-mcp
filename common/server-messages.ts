@@ -54,6 +54,84 @@ export interface CaptureScreenshotServerMessage extends ServerMessageBase {
   scale?: number;
 }
 
+/* ── agir na pagina (so nas abas do grupo do Claude) ── */
+
+export interface NavigateServerMessage extends ServerMessageBase {
+  cmd: "navigate";
+  tabId: number;
+  // URL, ou "back" / "forward" / "reload"
+  url: string;
+}
+
+export interface SnapshotServerMessage extends ServerMessageBase {
+  cmd: "snapshot";
+  tabId: number;
+  // so os elementos interativos, ou a pagina toda
+  interactiveOnly?: boolean;
+}
+
+export interface ClickServerMessage extends ServerMessageBase {
+  cmd: "click";
+  tabId: number;
+  ref?: string;
+  selector?: string;
+  x?: number;
+  y?: number;
+  double?: boolean;
+}
+
+export interface TypeServerMessage extends ServerMessageBase {
+  cmd: "type";
+  tabId: number;
+  ref?: string;
+  selector?: string;
+  text: string;
+  clear?: boolean;
+  submit?: boolean;
+}
+
+export interface PressKeyServerMessage extends ServerMessageBase {
+  cmd: "press-key";
+  tabId: number;
+  key: string;
+}
+
+export interface ScrollServerMessage extends ServerMessageBase {
+  cmd: "scroll";
+  tabId: number;
+  ref?: string;
+  direction?: "up" | "down" | "left" | "right";
+  amount?: number;
+}
+
+export interface SelectOptionServerMessage extends ServerMessageBase {
+  cmd: "select-option";
+  tabId: number;
+  ref?: string;
+  selector?: string;
+  value: string;
+}
+
+export interface RunJsServerMessage extends ServerMessageBase {
+  cmd: "run-js";
+  tabId: number;
+  code: string;
+}
+
+export interface ReadConsoleServerMessage extends ServerMessageBase {
+  cmd: "read-console";
+  tabId: number;
+  pattern?: string;
+  clear?: boolean;
+}
+
+export interface ReadNetworkServerMessage extends ServerMessageBase {
+  cmd: "read-network";
+  tabId: number;
+  urlPattern?: string;
+  clear?: boolean;
+}
+
 export type ServerMessage =
   | OpenTabServerMessage
   | CloseTabsServerMessage
@@ -63,6 +141,16 @@ export type ServerMessage =
   | ReorderTabsServerMessage
   | FindHighlightServerMessage
   | GroupTabsServerMessage
-  | CaptureScreenshotServerMessage;
+  | CaptureScreenshotServerMessage
+  | NavigateServerMessage
+  | SnapshotServerMessage
+  | ClickServerMessage
+  | TypeServerMessage
+  | PressKeyServerMessage
+  | ScrollServerMessage
+  | SelectOptionServerMessage
+  | RunJsServerMessage
+  | ReadConsoleServerMessage
+  | ReadNetworkServerMessage;
 
 export type ServerMessageRequest = ServerMessage & { correlationId: string };

@@ -1,27 +1,37 @@
 {
-    "manifest_version": 2,
-    "name": "Browser Control MCP",
-    "version": "1.5.2",
-    "description": "An extension that allows a local MCP server to perform actions on the browser.",
-    "permissions": [
-        "tabs",
-        "tabGroups",
-        "history",
-        "storage",
-        "activeTab"
-    ],
-    "optional_permissions": [
-        "*://*/*",
-        "find"
-    ],
-    "background": {
-      "scripts": ["dist/background.js"]
-    },
-    "browser_action": {
-      "default_icon": "assets/screenshot.svg",
-      "default_title": "Browser Control MCP: allow a screenshot of this tab"
-    },
-    "options_ui": {
-      "page": "options.html"
+  "manifest_version": 2,
+  "name": "Claude no Firefox",
+  "version": "1.5.2",
+  "description": "Deixa o Claude (Claude Code) navegar, clicar e digitar nas abas do grupo Claude, com a conexão só local.",
+  "permissions": [
+    "tabs",
+    "tabGroups",
+    "history",
+    "storage",
+    "webRequest",
+    "<all_urls>"
+  ],
+  "optional_permissions": [
+    "find"
+  ],
+  "background": {
+    "scripts": [
+      "dist/background.js"
+    ]
+  },
+  "browser_action": {
+    "default_icon": "assets/screenshot.svg",
+    "default_title": "Claude no Firefox",
+    "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "options.html"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "claude-no-firefox@g-lacerda",
+      "strict_min_version": "139.0"
     }
-  }
+  },
+  "content_security_policy": "script-src 'self'; object-src 'self'; connect-src ws://localhost:* ws://127.0.0.1:* ws://[::1]:*"
+}

@@ -17,6 +17,17 @@ const EXTENSION_RESPONSE_TIMEOUT_MS = 1000;
 // Capturing may foreground the tab, wait for it to paint, encode the image and transfer a
 // payload orders of magnitude larger than the other responses.
 const SCREENSHOT_RESPONSE_TIMEOUT_MS = 10000;
+// navegar espera a pagina carregar (ate 15s na extensao); agir e ler pagina grande levam mais que 1s
+const ACAO_RESPONSE_TIMEOUT_MS = 20000;
+
+/*
+ * So a propria extensao conecta: navegador manda Origin moz-extension:// pra
+ * ela, e http(s):// pra qualquer site aberto. Sem isso, uma pagina aberta no
+ * Firefox podia se conectar em localhost e tomar o lugar da extensao.
+ */
+export function origemPermitida(origin: string | undefined): boolean {
+  return typeof origin === "string" && origin.startsWith("moz-extension://");
+}
 
 interface ExtensionRequestResolver<T extends ExtensionMessage["resource"]> {
   resource: T;
@@ -60,7 +71,15 @@ export class BrowserAPI {
     const hosts = process.env.CONTAINERIZED ? ["0.0.0.0"] : ["127.0.0.1", "::1"];
 
     for (const host of hosts) {
-      const wsServer = new WebSocket.Server({ host, port });
+      const wsServer = new WebSocket.Server({
+        host,
+        port,
+        verifyClient: (info: { origin: string }) => {
+          const ok = origemPermitida(info.origin);
+          if (!ok) console.error(`Conexao recusada de ${info.origin || "origem desconhecida"}`);
+          return ok;
+        },
+      });
 
       console.error(`Starting WebSocket server on ${host}:${port}`);
       wsServer.on("connection", async (connection) => {
@@ -69,7 +88,13 @@ export class BrowserAPI {
         console.error("WebSocket connection established on port", port);
 
         this.ws.on("message", (message) => {
-          const decoded = JSON.parse(message.toString());
+          let decoded: any;
+          try {
+            decoded = JSON.parse(message.toString());
+          } catch {
+            console.error("Mensagem que nao e JSON");
+            return;
+          }
           if (isErrorMessage(decoded)) {
             this.handleExtensionError(decoded);
             return;
@@ -106,7 +131,7 @@ export class BrowserAPI {
       cmd: "open-tab",
       url,
     });
-    const message = await this.waitForResponse(correlationId, "opened-tab-id");
+    const message = await this.waitForResponse(correlationId, "opened-tab-id", ACAO_RESPONSE_TIMEOUT_MS);
     return message.tabId;
   }
 
@@ -146,7 +171,7 @@ export class BrowserAPI {
       tabId,
       offset,
     });
-    return await this.waitForResponse(correlationId, "tab-content");
+    return await this.waitForResponse(correlationId, "tab-content", ACAO_RESPONSE_TIMEOUT_MS);
   }
 
   async reorderTabs(tabOrder: number[]): Promise<number[]> {
@@ -208,6 +233,16 @@ export class BrowserAPI {
     );
   }
 
+  /* comandos de agir e ler: mandam e esperam o recurso de resposta */
+  async comando<T extends ExtensionMessage["resource"]>(
+    message: ServerMessage,
+    resource: T,
+    timeoutMs: number = ACAO_RESPONSE_TIMEOUT_MS
+  ): Promise<Extract<ExtensionMessage, { resource: T }>> {
+    const correlationId = this.sendMessageToExtension(message);
+    return this.waitForResponse(correlationId, resource, timeoutMs);
+  }
+
   private createSignature(payload: string): string {
     if (!this.sharedSecret) {
       throw new Error("Shared secret not initialized");
@@ -239,7 +274,10 @@ export class BrowserAPI {
 
   private handleDecodedExtensionMessage(decoded: ExtensionMessage) {
     const { correlationId } = decoded;
-    const { resolve, resource } = this.extensionRequestMap.get(correlationId)!;
+    const pendente = this.extensionRequestMap.get(correlationId);
+    // resposta de pedido que ja expirou (ou que ninguem fez): ignora em vez de derrubar o servidor
+    if (!pendente) return;
+    const { resolve, resource } = pendente;
     if (resource !== decoded.resource) {
       console.error("Resource mismatch:", resource, decoded.resource);
       return;
@@ -250,7 +288,9 @@ export class BrowserAPI {
 
   private handleExtensionError(decoded: ExtensionError) {
     const { correlationId, errorMessage } = decoded;
-    const { reject } = this.extensionRequestMap.get(correlationId)!;
+    const pendente = this.extensionRequestMap.get(correlationId);
+    if (!pendente) return;
+    const { reject } = pendente;
     this.extensionRequestMap.delete(correlationId);
     reject(errorMessage);
   }

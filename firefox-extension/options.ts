@@ -2,6 +2,12 @@
  * Options page script for Browser Control MCP extension
  */
 import {
+  getModoAutorizacao,
+  setModoAutorizacao,
+  getDominiosAprovados,
+  aprovarDominio,
+  revogarDominio,
+  type ModoAutorizacao,
   getSecret,
   AVAILABLE_TOOLS,
   getAllToolSettings,
@@ -574,6 +580,60 @@ function hidePermissionModal() {
   }
 }
 
+/* ── modo de autorizacao e sites liberados ── */
+
+async function carregarModo() {
+  const select = document.getElementById("modo-autorizacao") as HTMLSelectElement;
+  select.value = await getModoAutorizacao();
+  select.onchange = () => void setModoAutorizacao(select.value as ModoAutorizacao);
+}
+
+async function carregarDominiosAprovados() {
+  const lista = document.getElementById("dominios-aprovados") as HTMLUListElement;
+  lista.textContent = "";
+  const dominios = await getDominiosAprovados();
+  if (dominios.length === 0) {
+    const item = document.createElement("li");
+    item.textContent = "Nenhum ainda.";
+    lista.appendChild(item);
+    return;
+  }
+  for (const dominio of dominios) {
+    const item = document.createElement("li");
+    item.textContent = `${dominio} `;
+    const botao = document.createElement("button");
+    botao.textContent = "Revogar";
+    botao.onclick = async () => {
+      await revogarDominio(dominio);
+      await carregarDominiosAprovados();
+    };
+    item.appendChild(botao);
+    lista.appendChild(item);
+  }
+}
+
+/* o Claude pediu pra agir num site novo (modo "perguntar") */
+function pedirAprovacaoDeDominio(dominio: string) {
+  const modal = document.getElementById("permission-modal") as HTMLDivElement;
+  const mainContent = document.getElementById("main-content") as HTMLDivElement;
+  (modal.querySelector("h2") as HTMLHeadingElement).textContent = "Liberar o Claude neste site?";
+  (modal.querySelector("p") as HTMLParagraphElement).textContent = "O Claude quer navegar, ler, clicar e digitar nas abas dele neste site:";
+  (document.getElementById("permission-domain") as HTMLDivElement).textContent = dominio;
+  (document.getElementById("permission-text") as HTMLParagraphElement).textContent =
+    "Vale até você revogar aqui nas opções. As suas abas continuam fora do alcance dele.";
+  const permitir = document.getElementById("grant-btn") as HTMLButtonElement;
+  const cancelar = document.getElementById("cancel-btn") as HTMLButtonElement;
+  permitir.textContent = "Liberar";
+  cancelar.textContent = "Agora não";
+  modal.classList.remove("hidden");
+  mainContent.classList.add("modal-open");
+  permitir.onclick = async () => {
+    await aprovarDominio(dominio);
+    window.close();
+  };
+  cancelar.onclick = () => window.close();
+}
+
 // Initialize the page
 copyButton.addEventListener("click", copyToClipboard);
 saveDomainListsButton.addEventListener("click", saveDomainLists);
@@ -585,6 +645,8 @@ document.addEventListener("DOMContentLoaded", () => {
   loadDomainLists();
   loadPorts();
   loadAuditLog();
+  void carregarModo();
+  void carregarDominiosAprovados();
   initializeCollapsibleSections();
 
   // Ensure modal is hidden by default
@@ -597,7 +659,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const requestUrl = params.get("requestUrl");
   const requestPermissions = params.get("requestPermissions");
 
-  if (requestUrl) {
+  const aprovarDominioParam = params.get("aprovarDominio");
+  if (aprovarDominioParam) {
+    pedirAprovacaoDeDominio(aprovarDominioParam);
+  } else if (requestUrl) {
     // Show UI for requesting permission for this specific URL
     showPermissionRequest(requestUrl);
   } else if (requestPermissions) {

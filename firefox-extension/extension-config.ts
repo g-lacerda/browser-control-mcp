@@ -51,6 +51,26 @@ export const AVAILABLE_TOOLS: ToolInfo[] = [
     description: "Allows the MCP server to search for and highlight text in web pages"
   },
   {
+    id: "agir-na-pagina",
+    name: "Agir na pagina",
+    description: "Navegar, clicar, digitar, rolar e escolher opcoes nas abas do grupo Claude"
+  },
+  {
+    id: "ler-pagina",
+    name: "Ler a pagina",
+    description: "Ler os elementos da pagina com referencias, nas abas do grupo Claude"
+  },
+  {
+    id: "rodar-javascript",
+    name: "Rodar JavaScript",
+    description: "Executar JavaScript nas abas do grupo Claude"
+  },
+  {
+    id: "console-e-rede",
+    name: "Console e rede",
+    description: "Ler o console e as requisicoes de rede das abas do grupo Claude"
+  },
+  {
     id: "capture-tab-screenshot",
     name: "Capture Tab Screenshot",
     description: "Allows the MCP server to capture a screenshot of a tab, after you authorize that tab with the toolbar button"
@@ -68,6 +88,16 @@ export const COMMAND_TO_TOOL_ID: Record<ServerMessageRequest["cmd"], string> = {
   "find-highlight": "find-highlight-in-browser-tab",
   "group-tabs": "reorder-browser-tabs",
   "capture-screenshot": "capture-tab-screenshot",
+  "navigate": "agir-na-pagina",
+  "click": "agir-na-pagina",
+  "type": "agir-na-pagina",
+  "press-key": "agir-na-pagina",
+  "scroll": "agir-na-pagina",
+  "select-option": "agir-na-pagina",
+  "snapshot": "ler-pagina",
+  "run-js": "rodar-javascript",
+  "read-console": "console-e-rede",
+  "read-network": "console-e-rede",
 };
 
 // Storage schema for tool settings
@@ -84,8 +114,18 @@ export interface AuditLogEntry {
 }
 
 // Extended config interface
+export type ModoAutorizacao = "autonomo" | "perguntar";
+
+// definido na compilacao (MODO_PADRAO=autonomo npm run build); sem ele, pergunta por site
+declare const __MODO_PADRAO__: string | undefined;
+export const MODO_PADRAO: ModoAutorizacao =
+  typeof __MODO_PADRAO__ !== "undefined" && __MODO_PADRAO__ === "autonomo" ? "autonomo" : "perguntar";
+
 export interface ExtensionConfig {
   secret: string;
+  modoAutorizacao?: ModoAutorizacao;
+  dominiosAprovados?: string[];
+  pausado?: boolean;
   toolSettings?: ToolSettings;
   domainDenyList?: string[];
   ports: number[];
@@ -100,6 +140,8 @@ export function getDefaultToolSettings(): ToolSettings {
   AVAILABLE_TOOLS.forEach(tool => {
     settings[tool.id] = true;
   });
+  // o historico e da pessoa, nao do Claude: so com ela ligando nas opcoes
+  settings["get-recent-browser-history"] = false;
   return settings;
 }
 
@@ -145,9 +187,13 @@ export async function getSecret(): Promise<string> {
  * Generates a new secret and saves it to storage
  * @returns A Promise that resolves with the new secret
  */
+// chave combinada na compilacao (SEGREDO_INICIAL=... npm run build), pra nao precisar copiar das opcoes
+declare const __SEGREDO_INICIAL__: string | undefined;
+
 export async function generateSecret(): Promise<string> {
   const config = await getConfig();
-  config.secret = crypto.randomUUID();
+  const inicial = typeof __SEGREDO_INICIAL__ !== "undefined" ? __SEGREDO_INICIAL__ : "";
+  config.secret = inicial.length >= 32 ? inicial : crypto.randomUUID();
   await saveConfig(config);
   return config.secret;
 }
@@ -159,8 +205,9 @@ export async function generateSecret(): Promise<string> {
  */
 export async function isToolEnabled(toolId: string): Promise<boolean> {
   const config = await getConfig();
-  // Default to true if not explicitly set to false
-  return config.toolSettings?.[toolId] !== false;
+  const valor = config.toolSettings?.[toolId];
+  // ferramenta nova (sem valor gravado) segue o padrao: tudo ligado menos o historico
+  return valor === undefined ? getDefaultToolSettings()[toolId] !== false : valor;
 }
 
 /**
@@ -321,4 +368,46 @@ export async function clearAuditLog(): Promise<void> {
 export function getToolNameById(toolId: string): string {
   const tool = AVAILABLE_TOOLS.find(t => t.id === toolId);
   return tool ? tool.name : toolId;
+}
+
+/* ── modo de autorizacao, sites aprovados e pausa ── */
+
+export async function getModoAutorizacao(): Promise<ModoAutorizacao> {
+  const config = await getConfig();
+  return config.modoAutorizacao ?? MODO_PADRAO;
+}
+
+export async function setModoAutorizacao(modo: ModoAutorizacao): Promise<void> {
+  const config = await getConfig();
+  config.modoAutorizacao = modo;
+  await saveConfig(config);
+}
+
+export async function getDominiosAprovados(): Promise<string[]> {
+  const config = await getConfig();
+  return config.dominiosAprovados ?? [];
+}
+
+export async function aprovarDominio(dominio: string): Promise<void> {
+  const config = await getConfig();
+  const lista = new Set(config.dominiosAprovados ?? []);
+  lista.add(dominio.toLowerCase());
+  config.dominiosAprovados = [...lista].sort();
+  await saveConfig(config);
+}
+
+export async function revogarDominio(dominio: string): Promise<void> {
+  const config = await getConfig();
+  config.dominiosAprovados = (config.dominiosAprovados ?? []).filter((d) => d !== dominio.toLowerCase());
+  await saveConfig(config);
+}
+
+export async function estaPausado(): Promise<boolean> {
+  return (await getConfig()).pausado === true;
+}
+
+export async function setPausado(pausado: boolean): Promise<void> {
+  const config = await getConfig();
+  config.pausado = pausado;
+  await saveConfig(config);
 }
